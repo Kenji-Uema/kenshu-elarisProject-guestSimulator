@@ -1,0 +1,48 @@
+digraph booking {
+    rankdir=TB;
+    nodesep=0.5;
+    ranksep=1.5;
+
+    node [shape=box, style=rounded]
+    Init [shape=oval]
+    End [shape=oval]
+
+    ListCottages
+    SelectCottage
+    SelectPeriod
+    SearchBy_PeriodAndType
+    SelectCottage_PeriodPreSet
+    BookCottage
+
+    Init -> ListCottages [weight=1]
+
+    ListCottages -> SelectCottage [weight=0.45]
+    ListCottages -> SearchBy_PeriodAndType [weight=0.55]
+
+    SelectCottage -> SelectPeriod [weight=0.60]
+    SelectCottage -> ListCottages [weight=0.40]
+
+    SelectPeriod -> SelectPeriod [weight=0.30]
+    SelectPeriod -> SelectCottage [weight=0.20]
+    SelectPeriod -> ListCottages [weight=0.10]
+    SelectPeriod -> BookCottage [weight=0.40]
+
+    SearchBy_PeriodAndType -> ListCottages [weight=0.20]
+    SearchBy_PeriodAndType -> SearchBy_PeriodAndType [weight=0.30]
+    SearchBy_PeriodAndType -> SelectCottage_PeriodPreSet [weight=0.50]
+
+    SelectCottage_PeriodPreSet -> SelectCottage_PeriodPreSet [weight=0.15]
+    SelectCottage_PeriodPreSet -> SearchBy_PeriodAndType [weight=0.25]
+    SelectCottage_PeriodPreSet -> ListCottages [weight=0.10]
+    SelectCottage_PeriodPreSet -> BookCottage [weight=0.50]
+
+    BookCottage -> SelectPeriod [weight=0.05]
+    BookCottage -> SelectCottage [weight=0.05]
+    BookCottage -> ListCottages [weight=0.05]
+    BookCottage -> SearchBy_PeriodAndType [weight=0.05]
+    BookCottage -> SelectCottage_PeriodPreSet [weight=0.05]
+    BookCottage -> End [weight=0.75]
+
+    { rank=sink; BookCottage }
+    { rank=sink; End }
+}
