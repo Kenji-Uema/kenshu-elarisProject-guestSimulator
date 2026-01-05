@@ -9,6 +9,7 @@ import (
 	clockEmuProto "guestEmulator/internal/transport/grpc/pb/clockEmu"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
@@ -55,11 +56,13 @@ func (m *Machine) Start(ctx context.Context) error {
 	var input any = domain.IgnoredField{}
 	s := m.initState
 
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		default:
+		case <-ticker.C:
 			nextInput, err := s.Execute(machineCtx, input)
 			if err != nil {
 				return err
