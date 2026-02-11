@@ -1,0 +1,18 @@
+digraph guest_register {
+    rankdir=TB;
+    nodesep=0.5;
+    ranksep=1.5;
+
+    node [shape=box, style=rounded]
+    End [shape=oval]
+
+    RegisterGuest
+    RetrieveGuest
+
+    Init -> RegisterGuest [weight=1.0]
+    RegisterGuest -> RetrieveGuest [weight=1.0]
+    RetrieveGuest -> End [weight=1.0]
+
+    { rank=source; Init }
+    { rank=sink; End }
+}

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"guestEmulator/internal/app/state"
+	"guestEmulator/internal/app/state/booking_state"
 	"guestEmulator/internal/app/utils"
 	"guestEmulator/internal/config"
 	"guestEmulator/internal/domain"
@@ -32,12 +33,12 @@ func NewBookingMachine(config config.BookingMachineConfig) (*Machine, error) {
 	zeroState := state.NewInitState()
 	bookingMachineStates := map[string]state.State{
 		"End":                        state.Adapter[domain.IgnoredField, domain.IgnoredField]{State: state.NewEndState()},
-		"SelectCottage":              state.Adapter[[]string, string]{State: state.NewSelectCottageState()},
-		"ListCottages":               state.Adapter[domain.IgnoredField, []string]{State: state.NewListCottagesState(cottageClient)},
-		"SelectPeriod":               state.Adapter[string, domain.Period]{State: state.NewSelectPeriodState(clock, guestClient)},
-		"SearchBy_TypeAndPeriod":     state.Adapter[domain.IgnoredField, []domain.CottageAvailable]{State: state.NewSearchByTypeAndPeriodState(cottageClient)},
-		"SelectCottage_PeriodPreSet": state.Adapter[[]domain.CottageAvailable, string]{State: state.NewSelectCottagePeriodPreSetState()},
-		"BookCottage":                state.Adapter[domain.Cottage, domain.BookingConfirmation]{State: state.NewBookCottageState(guestClient)},
+		"SelectCottage":              state.Adapter[[]string, string]{State: booking_state.NewSelectCottageState()},
+		"ListCottages":               state.Adapter[domain.IgnoredField, []string]{State: booking_state.NewListCottagesState(cottageClient)},
+		"SelectPeriod":               state.Adapter[string, domain.Period]{State: booking_state.NewSelectPeriodState(clock, guestClient)},
+		"SearchBy_TypeAndPeriod":     state.Adapter[domain.IgnoredField, []domain.CottageAvailable]{State: booking_state.NewSearchByTypeAndPeriodState(cottageClient)},
+		"SelectCottage_PeriodPreSet": state.Adapter[[]domain.CottageAvailable, string]{State: booking_state.NewSelectCottagePeriodPreSetState()},
+		"BookCottage":                state.Adapter[domain.Cottage, domain.BookingConfirmation]{State: booking_state.NewBookCottageState(guestClient)},
 	}
 
 	stateMap, err := readGraph(config.GraphFile, bookingMachineStates)

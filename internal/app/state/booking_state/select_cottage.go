@@ -1,4 +1,4 @@
-package state
+package booking_state
 
 import (
 	"context"
