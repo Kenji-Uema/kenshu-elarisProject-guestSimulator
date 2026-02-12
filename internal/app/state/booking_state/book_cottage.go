@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
 
@@ -20,7 +20,7 @@ func NewBookCottageState(c *resty.Client) *BookCottageState {
 }
 
 func (b BookCottageState) Execute(ctx context.Context, in domain.Cottage) (domain.BookingConfirmation, error) {
-	log.Printf("User book a cottage %v\n", in)
+	slog.Info("User book a cottage", "cottage", in)
 
 	resp, err := b.client.R().
 		SetContext(ctx).

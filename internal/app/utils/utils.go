@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"log"
+	"log/slog"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
@@ -45,7 +46,8 @@ func PickRandomWeighted[T any](list []domain.WeightedTuple[T]) T {
 func NewGrpcConnection(addr string) (conn *grpc.ClientConn) {
 	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		slog.Error("did not connect", "err", err)
+		os.Exit(1)
 	}
 
 	return conn
@@ -54,7 +56,8 @@ func NewGrpcConnection(addr string) (conn *grpc.ClientConn) {
 func CloseGrpcConnection(conn *grpc.ClientConn) {
 	err := conn.Close()
 	if err != nil {
-		log.Fatalf("did not close the connection: %v", err)
+		slog.Error("did not close the connection", "err", err)
+		os.Exit(1)
 	}
 }
 

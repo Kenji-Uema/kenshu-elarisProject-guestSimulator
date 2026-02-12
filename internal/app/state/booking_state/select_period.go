@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/app/utils"
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
@@ -28,7 +28,7 @@ func NewSelectPeriodState(clock clockEmuProto.ClockServiceClient, client *resty.
 }
 
 func (s SelectPeriodState) Execute(ctx context.Context, cottageName string) (domain.Period, error) {
-	log.Println("User selects a period of time")
+	slog.Info("User selects a period of time")
 
 	nights := utils.PickRandom(numberOfNights)
 	searchPeriod := utils.PickRandom(daysAhead)
@@ -62,6 +62,6 @@ func (s SelectPeriodState) Execute(ctx context.Context, cottageName string) (dom
 		}
 	}
 
-	log.Println("No suitable period found")
+	slog.Warn("No suitable period found")
 	return domain.Period{}, nil
 }

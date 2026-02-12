@@ -2,7 +2,7 @@ package state
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
 )
@@ -14,7 +14,7 @@ func NewEndState() *EndState {
 }
 
 func (e EndState) Execute(ctx context.Context, _ domain.IgnoredField) (domain.IgnoredField, error) {
-	log.Println("Guest ended interaction with the system")
+	slog.Info("Guest ended interaction with the system")
 
 	ctx.Done()
 

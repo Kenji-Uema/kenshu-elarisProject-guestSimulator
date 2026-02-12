@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
 
@@ -20,7 +20,7 @@ func NewSearchByTypeAndPeriodState(c *resty.Client) *SearchByTypeAndPeriodState 
 }
 
 func (s SearchByTypeAndPeriodState) Execute(ctx context.Context, _ domain.IgnoredField) ([]domain.CottageAvailable, error) {
-	log.Println("User search for cottages by type and period")
+	slog.Info("User search for cottages by type and period")
 
 	resp, err := s.client.R().
 		SetContext(ctx).

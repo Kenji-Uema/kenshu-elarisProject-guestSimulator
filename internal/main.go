@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/app"
 	"github.com/Kenji-Uema/guestEmulator/internal/config"
@@ -18,10 +19,12 @@ func main() {
 
 	machine, err := app.NewBookingMachine(cfg)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to create booking machine", "err", err)
+		os.Exit(1)
 	}
 
 	if err := machine.Start(context.Background()); err != nil {
-		log.Fatal(err)
+		slog.Error("booking machine stopped with error", "err", err)
+		os.Exit(1)
 	}
 }

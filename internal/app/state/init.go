@@ -3,7 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
@@ -18,7 +18,7 @@ func NewInitState() *InitState {
 }
 
 func (s InitState) Execute(ctx context.Context) (context.Context, error) {
-	log.Println("Start process of booking a cottage")
+	slog.Info("Start process of booking a cottage")
 
 	name := strings.Split(gofakeit.Name(), " ")
 
@@ -29,7 +29,7 @@ func (s InitState) Execute(ctx context.Context) (context.Context, error) {
 		Email:      fmt.Sprintf("%s.%s@test.com", name[0], name[1]),
 	}
 
-	log.Printf("New Person %v generated", guest)
+	slog.Info("New person generated", "guest", guest)
 
 	return context.WithValue(ctx, "guest", guest), nil
 }

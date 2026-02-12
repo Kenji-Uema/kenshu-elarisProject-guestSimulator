@@ -2,7 +2,7 @@ package app
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -85,7 +85,7 @@ func readGraph(graphFile string, states map[string]state.State) (map[state.State
 	defer func(graph *cgraph.Graph) {
 		err := graph.Close()
 		if err != nil {
-			log.Fatalf("did not close the graph: %v", err)
+			slog.Error("did not close the graph", "err", err)
 		}
 	}(graph)
 

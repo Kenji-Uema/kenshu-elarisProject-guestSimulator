@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
 
@@ -20,7 +20,7 @@ func NewListCottagesState(c *resty.Client) *ListCottagesState {
 }
 
 func (s *ListCottagesState) Execute(ctx context.Context, _ domain.IgnoredField) ([]string, error) {
-	log.Println("User retrieves the list of cottages")
+	slog.Info("User retrieves the list of cottages")
 
 	resp, err := s.client.R().
 		SetContext(ctx).
