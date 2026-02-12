@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"guestEmulator/internal/domain"
 	"log"
+
+	"github.com/Kenji-Uema/guestEmulator/internal/domain"
 
 	"github.com/go-resty/resty/v2"
 )

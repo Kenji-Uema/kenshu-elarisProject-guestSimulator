@@ -2,7 +2,8 @@ package state
 
 import (
 	"context"
-	"guestEmulator/internal/app/errors"
+
+	"github.com/Kenji-Uema/guestEmulator/internal/app/errors"
 )
 
 type State interface {

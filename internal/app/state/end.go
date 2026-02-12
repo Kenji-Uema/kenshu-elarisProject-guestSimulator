@@ -2,8 +2,9 @@ package state
 
 import (
 	"context"
-	"guestEmulator/internal/domain"
 	"log"
+
+	"github.com/Kenji-Uema/guestEmulator/internal/domain"
 )
 
 type EndState struct{}

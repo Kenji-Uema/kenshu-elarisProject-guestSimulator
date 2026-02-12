@@ -1,8 +1,6 @@
-module guestEmulator
+module github.com/Kenji-Uema/guestEmulator
 
-go 1.24.0
-
-toolchain go1.24.1
+go 1.25.6
 
 require (
 	github.com/brianvoe/gofakeit/v7 v7.14.0
@@ -18,9 +16,9 @@ require (
 	github.com/fogleman/gg v1.3.0 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/tetratelabs/wazero v1.11.0 // indirect
-	golang.org/x/image v0.34.0 // indirect
-	golang.org/x/net v0.48.0 // indirect
-	golang.org/x/sys v0.39.0 // indirect
-	golang.org/x/text v0.32.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251029180050-ab9386a59fda // indirect
+	golang.org/x/image v0.36.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260209200024-4cfbd4190f57 // indirect
 )

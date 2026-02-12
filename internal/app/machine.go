@@ -2,15 +2,16 @@ package app
 
 import (
 	"context"
-	"guestEmulator/internal/app/state"
-	"guestEmulator/internal/app/state/booking_state"
-	"guestEmulator/internal/app/utils"
-	"guestEmulator/internal/config"
-	"guestEmulator/internal/domain"
-	clockEmuProto "guestEmulator/internal/transport/grpc/pb/clockEmu"
 	"log"
 	"strconv"
 	"time"
+
+	"github.com/Kenji-Uema/guestEmulator/internal/app/state"
+	"github.com/Kenji-Uema/guestEmulator/internal/app/state/booking_state"
+	"github.com/Kenji-Uema/guestEmulator/internal/app/utils"
+	"github.com/Kenji-Uema/guestEmulator/internal/config"
+	"github.com/Kenji-Uema/guestEmulator/internal/domain"
+	clockEmuProto "github.com/Kenji-Uema/guestEmulator/internal/transport/grpc/pb/clockEmu"
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"

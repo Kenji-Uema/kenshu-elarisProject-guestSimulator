@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"guestEmulator/internal/app/utils"
-	"guestEmulator/internal/domain"
-	clockEmuProto "guestEmulator/internal/transport/grpc/pb/clockEmu"
 	"log"
+
+	"github.com/Kenji-Uema/guestEmulator/internal/app/utils"
+	"github.com/Kenji-Uema/guestEmulator/internal/domain"
+	clockEmuProto "github.com/Kenji-Uema/guestEmulator/internal/transport/grpc/pb/clockEmu"
 
 	"github.com/go-resty/resty/v2"
 	"google.golang.org/protobuf/types/known/emptypb"

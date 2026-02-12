@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"guestEmulator/internal/domain"
 	"log"
+
+	"github.com/Kenji-Uema/guestEmulator/internal/domain"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -19,7 +20,7 @@ func NewSearchByTypeAndPeriodState(c *resty.Client) *SearchByTypeAndPeriodState 
 }
 
 func (s SearchByTypeAndPeriodState) Execute(ctx context.Context, _ domain.IgnoredField) ([]domain.CottageAvailable, error) {
-	log.Println("User retrieves the list of cottages")
+	log.Println("User search for cottages by type and period")
 
 	resp, err := s.client.R().
 		SetContext(ctx).

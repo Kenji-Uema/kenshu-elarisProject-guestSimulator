@@ -3,9 +3,10 @@ package state
 import (
 	"context"
 	"fmt"
-	"guestEmulator/internal/domain"
 	"log"
 	"strings"
+
+	"github.com/Kenji-Uema/guestEmulator/internal/domain"
 
 	"github.com/brianvoe/gofakeit/v7"
 )

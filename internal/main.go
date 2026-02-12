@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
-	"guestEmulator/internal/app"
-	"guestEmulator/internal/config"
 	"log"
+
+	"github.com/Kenji-Uema/guestEmulator/internal/app"
+	"github.com/Kenji-Uema/guestEmulator/internal/config"
 )
 
 func main() {

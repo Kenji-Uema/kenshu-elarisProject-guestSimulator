@@ -2,8 +2,9 @@ package booking_state
 
 import (
 	"context"
-	"guestEmulator/internal/app/utils"
-	"guestEmulator/internal/domain"
+
+	"github.com/Kenji-Uema/guestEmulator/internal/app/utils"
+	"github.com/Kenji-Uema/guestEmulator/internal/domain"
 )
 
 type SelectCottagePeriodPreSetState struct{}

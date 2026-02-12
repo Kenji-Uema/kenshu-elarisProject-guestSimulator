@@ -1,10 +1,11 @@
 package utils
 
 import (
-	"guestEmulator/internal/domain"
 	"log"
 	"math/rand"
 	"time"
+
+	"github.com/Kenji-Uema/guestEmulator/internal/domain"
 
 	"github.com/go-resty/resty/v2"
 	"google.golang.org/grpc"
