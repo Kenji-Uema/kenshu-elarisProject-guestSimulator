@@ -13,10 +13,8 @@ func NewEndState() *EndState {
 	return &EndState{}
 }
 
-func (e EndState) Execute(ctx context.Context, _ domain.IgnoredField) (domain.IgnoredField, error) {
+func (e EndState) Execute(_ context.Context, _ domain.IgnoredField) (domain.IgnoredField, error) {
 	slog.Info("Guest ended interaction with the system")
-
-	ctx.Done()
 
 	return domain.IgnoredField{}, nil
 }

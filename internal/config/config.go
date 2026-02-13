@@ -6,3 +6,8 @@ type BookingMachineConfig struct {
 	GuestManagerUrl   string
 	GraphFile         string
 }
+
+type GuestRegisterMachineConfig struct {
+	GuestManagerUrl string
+	GraphFile       string
+}

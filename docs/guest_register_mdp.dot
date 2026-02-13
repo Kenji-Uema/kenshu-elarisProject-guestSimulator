@@ -9,7 +9,6 @@ digraph guest_register {
     RegisterGuest
     RetrieveGuest
 
-    Init -> RegisterGuest [weight=1.0]
     RegisterGuest -> RetrieveGuest [weight=1.0]
     RetrieveGuest -> End [weight=1.0]
 

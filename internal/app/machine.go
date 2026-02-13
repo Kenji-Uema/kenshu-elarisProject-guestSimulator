@@ -8,6 +8,7 @@ import (
 
 	"github.com/Kenji-Uema/guestEmulator/internal/app/state"
 	"github.com/Kenji-Uema/guestEmulator/internal/app/state/booking_state"
+	"github.com/Kenji-Uema/guestEmulator/internal/app/state/register_guest_state"
 	"github.com/Kenji-Uema/guestEmulator/internal/app/utils"
 	"github.com/Kenji-Uema/guestEmulator/internal/config"
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
@@ -50,27 +51,54 @@ func NewBookingMachine(config config.BookingMachineConfig) (*Machine, error) {
 	return &Machine{zeroState: zeroState, initState: bookingMachineStates["ListCottages"], stateMap: stateMap}, nil
 }
 
+func NewGuestRegisterMachine(config config.GuestRegisterMachineConfig) (*Machine, error) {
+	guestClient := utils.NewRestyClient(config.GuestManagerUrl)
+
+	zeroState := state.NewInitState()
+	registerGuestStates := map[string]state.State{
+		"End":           state.Adapter[domain.IgnoredField, domain.IgnoredField]{State: state.NewEndState()},
+		"RegisterGuest": state.Adapter[domain.IgnoredField, string]{State: register_guest_state.NewRegisterGuestState(guestClient)},
+		"RetrieveGuest": state.Adapter[string, domain.IgnoredField]{State: register_guest_state.NewRetrieveGuestState(guestClient)},
+	}
+
+	stateMap, err := readGraph(config.GraphFile, registerGuestStates)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Machine{zeroState: zeroState, initState: registerGuestStates["RegisterGuest"], stateMap: stateMap}, nil
+}
+
 func (m *Machine) Start(ctx context.Context) error {
-	machineCtx, err := m.zeroState.Execute(ctx)
+	baseCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	machineCtx, err := m.zeroState.Execute(baseCtx)
 	if err != nil {
 		return err
 	}
 	var input any = domain.IgnoredField{}
 	s := m.initState
 
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
-		case <-ctx.Done():
+		case <-machineCtx.Done():
 			return nil
 		case <-ticker.C:
 			nextInput, err := s.Execute(machineCtx, input)
 			if err != nil {
 				return err
 			}
-			input = nextInput
-			s = utils.PickRandomWeighted(m.stateMap[s])
+
+			nextState := m.stateMap[s]
+			if nextState == nil {
+				cancel()
+			} else {
+				input = nextInput
+				s = utils.PickRandomWeighted(nextState)
+			}
 		}
 	}
 }
