@@ -11,7 +11,23 @@ import (
 
 func main() {
 	//bookingMachine()
-	guestRegisterMachine()
+	//guestRegisterMachine()
+	cfg := config.GuestRegisterMachineConfig{
+		GuestManagerUrl: "http://localhost:30010/",
+		GraphFile:       "docs/guest_register_mdp.dot",
+	}
+
+	machine, err := app.NewGuestRegisterMachine(cfg)
+	if err != nil {
+		slog.Error("failed to create booking machine", "err", err)
+		os.Exit(1)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	runner := app.NewRunner(machine, 3)
+	runner.Exec(ctx)
 }
 
 func bookingMachine() {
