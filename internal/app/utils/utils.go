@@ -25,10 +25,6 @@ func PickRandomWeighted[T any](list []domain.WeightedTuple[T]) T {
 		}
 	}
 
-	if total <= 0 {
-		return PickRandom(list).Value
-	}
-
 	target := rand.Float64() * total
 	for _, item := range list {
 		if item.Weight <= 0 {
