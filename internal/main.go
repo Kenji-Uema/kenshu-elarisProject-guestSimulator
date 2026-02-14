@@ -4,10 +4,13 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/app"
 	"github.com/Kenji-Uema/guestEmulator/internal/config"
 	"github.com/Kenji-Uema/guestEmulator/internal/tooling/log"
+	"github.com/Kenji-Uema/guestEmulator/internal/tooling/telemetry"
 )
 
 func main() {
@@ -18,15 +21,27 @@ func main() {
 		slog.Error("failed to load configs", "err", err)
 		os.Exit(1)
 	}
+
+	shutdownTelemetry, err := telemetry.Init(context.Background(), configs.TelemetryConfig, configs.AppConfig)
+	if err != nil {
+		slog.Error("failed to init telemetry", "err", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if err := shutdownTelemetry(context.Background()); err != nil {
+			slog.Error("failed to shutdown telemetry", "err", err)
+		}
+	}()
+
 	machine, err := app.NewGuestRegisterMachine(configs.GuestRegisterMachineConfig, configs.ServicesConfig)
 	if err != nil {
 		slog.Error("failed to create booking machine", "err", err)
 		os.Exit(1)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	runner := app.NewRunner(machine, 3)
+	runner := app.NewRunner(machine, configs.GuestRegisterMachineConfig.ConcurrencyLevel)
 	runner.Run(ctx)
 }

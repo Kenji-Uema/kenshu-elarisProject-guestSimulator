@@ -33,7 +33,10 @@ func (s SelectPeriodState) Execute(ctx context.Context, cottageName string) (dom
 	nights := utils.PickRandom(numberOfNights)
 	searchPeriod := utils.PickRandom(daysAhead)
 
-	nowResp, _ := s.clock.Now(context.Background(), &emptypb.Empty{})
+	nowResp, err := s.clock.Now(ctx, &emptypb.Empty{})
+	if err != nil {
+		return domain.Period{}, err
+	}
 	now := nowResp.Time.AsTime()
 	from := now.AddDate(0, 0, searchPeriod)
 	to := from.AddDate(0, 0, searchPeriod+window)
