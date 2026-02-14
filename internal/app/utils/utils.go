@@ -1,16 +1,9 @@
 package utils
 
 import (
-	"log/slog"
 	"math/rand"
-	"os"
-	"time"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
-
-	"github.com/go-resty/resty/v2"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func PickRandom[T any](list []T) T {
@@ -37,28 +30,4 @@ func PickRandomWeighted[T any](list []domain.WeightedTuple[T]) T {
 	}
 
 	return list[len(list)-1].Value
-}
-
-func NewGrpcConnection(addr string) (conn *grpc.ClientConn) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		slog.Error("did not connect", "err", err)
-		os.Exit(1)
-	}
-
-	return conn
-}
-
-func CloseGrpcConnection(conn *grpc.ClientConn) {
-	err := conn.Close()
-	if err != nil {
-		slog.Error("did not close the connection", "err", err)
-		os.Exit(1)
-	}
-}
-
-func NewRestyClient(url string) *resty.Client {
-	return resty.New().
-		SetTimeout(5 * time.Second).
-		SetBaseURL(url)
 }

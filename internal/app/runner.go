@@ -15,7 +15,7 @@ func NewRunner(machine *Machine, concurrencyLevel int) *Runner {
 	return &Runner{machine: machine, concurrencyLevel: concurrencyLevel, finishNotification: make(chan bool, concurrencyLevel)}
 }
 
-func (r *Runner) Exec(ctx context.Context) {
+func (r *Runner) Run(ctx context.Context) {
 	r.coldStart(ctx)
 
 	for {

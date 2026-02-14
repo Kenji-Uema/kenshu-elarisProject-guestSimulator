@@ -7,66 +7,17 @@ import (
 	"time"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/app/state"
-	"github.com/Kenji-Uema/guestEmulator/internal/app/state/booking_state"
-	"github.com/Kenji-Uema/guestEmulator/internal/app/state/register_guest_state"
 	"github.com/Kenji-Uema/guestEmulator/internal/app/utils"
-	"github.com/Kenji-Uema/guestEmulator/internal/config"
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
-	clockEmuProto "github.com/Kenji-Uema/guestEmulator/internal/transport/grpc/pb/clockEmu"
-
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
 )
 
 type Machine struct {
-	zeroState state.ZeroState
-	initState state.State
-	stateMap  map[state.State][]domain.WeightedTuple[state.State]
-}
-
-func NewBookingMachine(config config.BookingMachineConfig) (*Machine, error) {
-	cottageClient := utils.NewRestyClient(config.CottageManagerUrl)
-	guestClient := utils.NewRestyClient(config.GuestManagerUrl)
-	grpcConn := utils.NewGrpcConnection(config.ClockEmuUrl)
-	defer utils.CloseGrpcConnection(grpcConn)
-
-	clock := clockEmuProto.NewClockServiceClient(grpcConn)
-
-	zeroState := state.NewInitState()
-	bookingMachineStates := map[string]state.State{
-		"End":                        state.Adapter[domain.IgnoredField, domain.IgnoredField]{State: state.NewEndState()},
-		"SelectCottage":              state.Adapter[[]string, string]{State: booking_state.NewSelectCottageState()},
-		"ListCottages":               state.Adapter[domain.IgnoredField, []string]{State: booking_state.NewListCottagesState(cottageClient)},
-		"SelectPeriod":               state.Adapter[string, domain.Period]{State: booking_state.NewSelectPeriodState(clock, guestClient)},
-		"SearchBy_TypeAndPeriod":     state.Adapter[domain.IgnoredField, []domain.CottageAvailable]{State: booking_state.NewSearchByTypeAndPeriodState(cottageClient)},
-		"SelectCottage_PeriodPreSet": state.Adapter[[]domain.CottageAvailable, string]{State: booking_state.NewSelectCottagePeriodPreSetState()},
-		"BookCottage":                state.Adapter[domain.Cottage, domain.BookingConfirmation]{State: booking_state.NewBookCottageState(guestClient)},
-	}
-
-	stateMap, err := readGraph(config.GraphFile, bookingMachineStates)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Machine{zeroState: zeroState, initState: bookingMachineStates["ListCottages"], stateMap: stateMap}, nil
-}
-
-func NewGuestRegisterMachine(config config.GuestRegisterMachineConfig) (*Machine, error) {
-	guestClient := utils.NewRestyClient(config.GuestManagerUrl)
-
-	zeroState := state.NewInitState()
-	registerGuestStates := map[string]state.State{
-		"End":           state.Adapter[domain.IgnoredField, domain.IgnoredField]{State: state.NewEndState()},
-		"RegisterGuest": state.Adapter[domain.IgnoredField, string]{State: register_guest_state.NewRegisterGuestState(guestClient)},
-		"RetrieveGuest": state.Adapter[string, domain.IgnoredField]{State: register_guest_state.NewRetrieveGuestState(guestClient)},
-	}
-
-	stateMap, err := readGraph(config.GraphFile, registerGuestStates)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Machine{zeroState: zeroState, initState: registerGuestStates["RegisterGuest"], stateMap: stateMap}, nil
+	zeroState                 state.ZeroState
+	initState                 state.State
+	stateMap                  map[state.State][]domain.WeightedTuple[state.State]
+	timeBetweenStepsInSeconds int
 }
 
 func (m *Machine) Start(ctx context.Context) error {
@@ -80,7 +31,7 @@ func (m *Machine) Start(ctx context.Context) error {
 	var input any = domain.IgnoredField{}
 	s := m.initState
 
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(time.Duration(m.timeBetweenStepsInSeconds) * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
