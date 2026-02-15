@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
+	"github.com/Kenji-Uema/guestEmulator/internal/tooling/telemetry"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -20,7 +21,10 @@ func NewListCottagesState(c *resty.Client) *ListCottagesState {
 }
 
 func (s *ListCottagesState) Execute(ctx context.Context, _ domain.IgnoredField) ([]string, error) {
-	slog.Info("User retrieves the list of cottages")
+	ctx, span := telemetry.Tracer.Start(ctx, "ListCottagesState")
+	defer span.End()
+
+	slog.InfoContext(ctx, "User retrieves the list of cottages")
 
 	resp, err := s.client.R().
 		SetContext(ctx).

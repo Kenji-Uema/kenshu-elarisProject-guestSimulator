@@ -37,7 +37,7 @@ func (r *Runner) coldStart(ctx context.Context) {
 func (r *Runner) startMachine(ctx context.Context) {
 	go func() {
 		if err := r.machine.Start(ctx); err != nil {
-			slog.Error("machine stopped with error", "err", err)
+			slog.ErrorContext(ctx, "machine stopped with error", "err", err)
 		}
 		r.finishNotification <- true
 	}()

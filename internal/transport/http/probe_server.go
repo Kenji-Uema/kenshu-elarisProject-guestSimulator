@@ -27,9 +27,10 @@ func StartHTTPServer(probeConfig config.ProbeConfig, serviceConfig config.Servic
 	}
 
 	go func() {
-		slog.Info("http health listening", "address", server.Addr)
+		ctx := context.Background()
+		slog.InfoContext(ctx, "http health listening", "address", server.Addr)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("http serve", err)
+			slog.ErrorContext(ctx, "http serve", err)
 		}
 	}()
 
@@ -40,6 +41,6 @@ func ShutDownHTTPServer(server *http.Server) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
-		slog.Error("http shutdown", err)
+		slog.ErrorContext(ctx, "http shutdown", err)
 	}
 }

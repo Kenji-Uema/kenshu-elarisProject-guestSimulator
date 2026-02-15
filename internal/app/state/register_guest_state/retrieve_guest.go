@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
+	"github.com/Kenji-Uema/guestEmulator/internal/tooling/telemetry"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -18,7 +19,10 @@ func NewRetrieveGuestState(c *resty.Client) *RetrieveGuestState {
 }
 
 func (s RetrieveGuestState) Execute(ctx context.Context, guestId string) (domain.IgnoredField, error) {
-	slog.Info("User retrieves its own account")
+	ctx, span := telemetry.Tracer.Start(ctx, "RetrieveGuestState")
+	defer span.End()
+
+	slog.InfoContext(ctx, "User retrieves its own account")
 
 	resp, err := s.client.R().
 		SetContext(ctx).
@@ -32,7 +36,7 @@ func (s RetrieveGuestState) Execute(ctx context.Context, guestId string) (domain
 		return domain.IgnoredField{}, fmt.Errorf("error: %s", resp.Status())
 	}
 
-	slog.Info(string(resp.Body()))
+	slog.InfoContext(ctx, "Guest retrieved correctly", "guest", string(resp.Body()))
 
 	return domain.IgnoredField{}, nil
 }

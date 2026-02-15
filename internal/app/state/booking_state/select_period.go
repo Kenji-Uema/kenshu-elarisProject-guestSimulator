@@ -8,6 +8,7 @@ import (
 
 	"github.com/Kenji-Uema/guestEmulator/internal/app/utils"
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
+	"github.com/Kenji-Uema/guestEmulator/internal/tooling/telemetry"
 	"github.com/Kenji-Uema/guestEmulator/internal/transport/grpc"
 	"github.com/go-resty/resty/v2"
 )
@@ -26,7 +27,10 @@ func NewSelectPeriodState(clock *grpc.Emu, client *resty.Client) SelectPeriodSta
 }
 
 func (s SelectPeriodState) Execute(ctx context.Context, cottageName string) (domain.Period, error) {
-	slog.Info("User selects a period of time")
+	ctx, span := telemetry.Tracer.Start(ctx, "SelectPeriodState")
+	defer span.End()
+
+	slog.InfoContext(ctx, "User selects a period of time")
 
 	nights := utils.PickRandom(numberOfNights)
 	searchPeriod := utils.PickRandom(daysAhead)
@@ -62,6 +66,6 @@ func (s SelectPeriodState) Execute(ctx context.Context, cottageName string) (dom
 		}
 	}
 
-	slog.Warn("No suitable period found")
+	slog.WarnContext(ctx, "No suitable period found")
 	return domain.Period{}, nil
 }

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
+	"github.com/Kenji-Uema/guestEmulator/internal/tooling/telemetry"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -20,7 +21,10 @@ func NewSearchByTypeAndPeriodState(c *resty.Client) *SearchByTypeAndPeriodState 
 }
 
 func (s SearchByTypeAndPeriodState) Execute(ctx context.Context, _ domain.IgnoredField) ([]domain.CottageAvailable, error) {
-	slog.Info("User search for cottages by type and period")
+	ctx, span := telemetry.Tracer.Start(ctx, "SearchByTypeAndPeriodState")
+	defer span.End()
+
+	slog.InfoContext(ctx, "User search for cottages by type and period")
 
 	resp, err := s.client.R().
 		SetContext(ctx).

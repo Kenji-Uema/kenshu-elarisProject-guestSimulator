@@ -7,7 +7,9 @@ import (
 	"log/slog"
 
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
+	"github.com/Kenji-Uema/guestEmulator/internal/tooling/telemetry"
 	"github.com/go-resty/resty/v2"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type RegisterGuestState struct {
@@ -19,9 +21,11 @@ func NewRegisterGuestState(c *resty.Client) *RegisterGuestState {
 }
 
 func (s RegisterGuestState) Execute(ctx context.Context, _ domain.IgnoredField) (string, error) {
-	slog.Info("User registers its own account")
+	ctx, span := telemetry.Tracer.Start(ctx, "RegisterGuestState")
+	defer span.End()
 
 	guest := ctx.Value("guest").(domain.Guest)
+	slog.InfoContext(ctx, "User registers its own account", "guest.Email", guest.Email)
 
 	resp, err := s.client.R().
 		SetContext(ctx).
@@ -40,6 +44,9 @@ func (s RegisterGuestState) Execute(ctx context.Context, _ domain.IgnoredField) 
 	if err := json.Unmarshal(resp.Body(), &guestId); err != nil {
 		return "", err
 	}
-	return guestId, nil
 
+	slog.InfoContext(ctx, "Guest registered", "guestId", guestId)
+	span.SetAttributes(attribute.String("guest.ID", guestId))
+
+	return guestId, nil
 }
