@@ -13,13 +13,12 @@ import (
 )
 
 func StartHTTPServer(probeConfig config.ProbeConfig, serviceConfig config.ServicesConfig) *http.Server {
-	cottageClient := NewRestyClient(serviceConfig.CottageManagerUrl)
-	guestClient := NewRestyClient(serviceConfig.GuestManagerUrl)
-	clockHealth := NewRestyClient(serviceConfig.ClockEmuHealthUrl)
+	cottageClient := NewRestyClient(serviceConfig.CottageManagerUrl, serviceConfig.CottageManagerPort)
+	guestClient := NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", probe.HealthHandler())
-	mux.HandleFunc("/readyz", probe.ReadinessHandler(cottageClient, guestClient, clockHealth))
+	mux.HandleFunc("/readyz", probe.ReadinessHandler(cottageClient, guestClient))
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", probeConfig.Address, probeConfig.Port),

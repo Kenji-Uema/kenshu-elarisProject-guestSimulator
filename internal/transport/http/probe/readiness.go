@@ -8,7 +8,7 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func ReadinessHandler(cottageClient *resty.Client, guestClient *resty.Client, clockHealth *resty.Client) http.HandlerFunc {
+func ReadinessHandler(cottageClient *resty.Client, guestClient *resty.Client) http.HandlerFunc {
 	ctx := context.Background()
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -20,13 +20,6 @@ func ReadinessHandler(cottageClient *resty.Client, guestClient *resty.Client, cl
 		}
 
 		if err := pingHealthz(guestClient, ctx, "GuestManager"); err != nil {
-			http.Error(w,
-				err.Error(),
-				http.StatusServiceUnavailable)
-			return
-		}
-
-		if err := pingHealthz(clockHealth, ctx, "Clock"); err != nil {
 			http.Error(w,
 				err.Error(),
 				http.StatusServiceUnavailable)

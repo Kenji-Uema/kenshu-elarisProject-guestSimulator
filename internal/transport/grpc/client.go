@@ -1,27 +1,43 @@
 package grpc
 
 import (
-	"log/slog"
-	"os"
+	"context"
+	"fmt"
+	"time"
 
+	"github.com/Kenji-Uema/guestEmulator/internal/config"
+	clockEmuProto "github.com/Kenji-Uema/guestEmulator/internal/transport/grpc/pb/clockEmu"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func NewGrpcConnection(addr string) (conn *grpc.ClientConn) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		slog.Error("did not connect", "err", err)
-		os.Exit(1)
-	}
-
-	return conn
+type Emu struct {
+	conn   *grpc.ClientConn
+	client clockEmuProto.ClockServiceClient
 }
 
-func CloseGrpcConnection(conn *grpc.ClientConn) {
-	err := conn.Close()
+func NewClockEmu(cfg config.ServicesConfig) (*Emu, error) {
+	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", cfg.ClockEmuGrpcUrl, cfg.ClockEmuGrpcPort),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+
 	if err != nil {
-		slog.Error("did not close the connection", "err", err)
-		os.Exit(1)
+		return nil, err
 	}
+
+	return &Emu{conn: conn, client: clockEmuProto.NewClockServiceClient(conn)}, nil
+}
+
+func (e *Emu) Close() error {
+	return e.conn.Close()
+}
+
+func (e *Emu) Now(ctx context.Context) (*time.Time, error) {
+	createTime, err := e.client.Now(ctx, &emptypb.Empty{})
+	if err != nil {
+		return nil, err
+	}
+	createdTimestamp := createTime.Time.AsTime()
+
+	return &createdTimestamp, nil
 }

@@ -21,25 +21,27 @@ type AppConfig struct {
 }
 
 type ProbeConfig struct {
-	Address string `env:"PROBE_HTTP_ADDRESS" required:"true"`
-	Port    int    `env:"PROBE_HTTP_PORT" required:"true"`
+	Address string `env:"PROBE_HTTP_ADDRESS,required"`
+	Port    int    `env:"PROBE_HTTP_PORT,required"`
 }
 
 type ServicesConfig struct {
-	ClockEmuGrpcUrl   string `env:"CLOCK_EMU_GRPC_URL,required"`
-	ClockEmuHealthUrl string `env:"CLOCK_EMU_HEALTH_URL,required"`
-	CottageManagerUrl string `env:"COTTAGE_MANAGER_URL,required"`
-	GuestManagerUrl   string `env:"GUEST_MANAGER_URL,required"`
+	ClockEmuGrpcUrl    string `env:"CLOCK_EMU_GRPC_URL,required"`
+	ClockEmuGrpcPort   int    `env:"CLOCK_EMU_GRPC_PORT,required"`
+	CottageManagerUrl  string `env:"COTTAGE_MANAGER_URL,required"`
+	CottageManagerPort int    `env:"COTTAGE_MANAGER_PORT,required"`
+	GuestManagerUrl    string `env:"GUEST_MANAGER_URL,required"`
+	GuestManagerPort   int    `env:"GUEST_MANAGER_PORT,required"`
 }
 
 type BookingMachineConfig struct {
-	GraphFile                 string `env:"BOOKING_MACHINE_GRAPH_FILE" default:"docs/booking_mdp.dot"`
+	GraphFile                 string `env:"BOOKING_MACHINE_GRAPH_FILE" envDefault:"docs/booking_mdp.dot"`
 	ConcurrencyLevel          int    `env:"BOOKING_MACHINE_CONCURRENCY_LEVEL,required"`
 	TimeBetweenStepsInSeconds int    `env:"BOOKING_MACHINE_TIME_BETWEEN_STEPS_IN_SECONDS,required"`
 }
 
 type GuestRegisterMachineConfig struct {
-	GraphFile                 string `env:"GUEST_REGISTER_GRAPH_FILE" default:"docs/guest_register_mdp.dot"`
+	GraphFile                 string `env:"GUEST_REGISTER_GRAPH_FILE" envDefault:"docs/guest_register_mdp.dot"`
 	ConcurrencyLevel          int    `env:"GUEST_REGISTER_MACHINE_CONCURRENCY_LEVEL,required"`
 	TimeBetweenStepsInSeconds int    `env:"GUEST_REGISTER_TIME_BETWEEN_STEPS_IN_SECONDS,required"`
 }
@@ -54,8 +56,10 @@ type TelemetryConfig struct {
 func LoadConfigs() (Configs, error) {
 	var cfg Configs
 	if err := env.Parse(&cfg); err != nil {
-		slog.Error("parse env config", "error", err)
 		return cfg, err
 	}
+
+	slog.Info("config loaded", "config", cfg)
+
 	return cfg, nil
 }

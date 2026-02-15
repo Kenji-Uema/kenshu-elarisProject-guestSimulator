@@ -8,10 +8,8 @@ import (
 
 	"github.com/Kenji-Uema/guestEmulator/internal/app/utils"
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
-	clockEmuProto "github.com/Kenji-Uema/guestEmulator/internal/transport/grpc/pb/clockEmu"
-
+	"github.com/Kenji-Uema/guestEmulator/internal/transport/grpc"
 	"github.com/go-resty/resty/v2"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 var numberOfNights = []int{3, 5, 7, 10, 14}
@@ -19,11 +17,11 @@ var daysAhead = []int{5, 7, 14, 30, 45, 60, 90, 120}
 var window = 30
 
 type SelectPeriodState struct {
-	clock  clockEmuProto.ClockServiceClient
+	clock  *grpc.Emu
 	client *resty.Client
 }
 
-func NewSelectPeriodState(clock clockEmuProto.ClockServiceClient, client *resty.Client) SelectPeriodState {
+func NewSelectPeriodState(clock *grpc.Emu, client *resty.Client) SelectPeriodState {
 	return SelectPeriodState{clock: clock, client: client}
 }
 
@@ -33,11 +31,10 @@ func (s SelectPeriodState) Execute(ctx context.Context, cottageName string) (dom
 	nights := utils.PickRandom(numberOfNights)
 	searchPeriod := utils.PickRandom(daysAhead)
 
-	nowResp, err := s.clock.Now(ctx, &emptypb.Empty{})
+	now, err := s.clock.Now(ctx)
 	if err != nil {
 		return domain.Period{}, err
 	}
-	now := nowResp.Time.AsTime()
 	from := now.AddDate(0, 0, searchPeriod)
 	to := from.AddDate(0, 0, searchPeriod+window)
 

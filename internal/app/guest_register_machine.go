@@ -9,7 +9,7 @@ import (
 )
 
 func NewGuestRegisterMachine(machineConfig config.GuestRegisterMachineConfig, serviceConfig config.ServicesConfig) (*Machine, error) {
-	guestClient := http.NewRestyClient(serviceConfig.GuestManagerUrl)
+	guestClient := http.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
 
 	zeroState := state.NewInitState()
 	registerGuestStates := map[string]state.State{
