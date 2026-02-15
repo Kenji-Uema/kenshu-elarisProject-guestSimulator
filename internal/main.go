@@ -11,6 +11,7 @@ import (
 	"github.com/Kenji-Uema/guestEmulator/internal/config"
 	"github.com/Kenji-Uema/guestEmulator/internal/tooling/log"
 	"github.com/Kenji-Uema/guestEmulator/internal/tooling/telemetry"
+	"github.com/Kenji-Uema/guestEmulator/internal/transport/http"
 )
 
 func main() {
@@ -32,6 +33,9 @@ func main() {
 			slog.Error("failed to shutdown telemetry", "err", err)
 		}
 	}()
+
+	probeServer := http.StartHTTPServer(configs.ProbeConfig, configs.ServicesConfig)
+	defer http.ShutDownHTTPServer(probeServer)
 
 	machine, err := app.NewGuestRegisterMachine(configs.GuestRegisterMachineConfig, configs.ServicesConfig)
 	if err != nil {

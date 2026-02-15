@@ -13,7 +13,7 @@ import (
 func NewBookingMachine(machineConfig config.BookingMachineConfig, serviceConfig config.ServicesConfig) (*Machine, error) {
 	cottageClient := http.NewRestyClient(serviceConfig.CottageManagerUrl)
 	guestClient := http.NewRestyClient(serviceConfig.GuestManagerUrl)
-	grpcConn := grpc.NewGrpcConnection(serviceConfig.ClockEmuUrl)
+	grpcConn := grpc.NewGrpcConnection(serviceConfig.ClockEmuGrpcUrl)
 	defer grpc.CloseGrpcConnection(grpcConn)
 
 	clock := clockEmuProto.NewClockServiceClient(grpcConn)

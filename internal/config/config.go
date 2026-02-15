@@ -8,6 +8,7 @@ import (
 
 type Configs struct {
 	AppConfig
+	ProbeConfig
 	ServicesConfig
 	BookingMachineConfig
 	GuestRegisterMachineConfig
@@ -19,8 +20,14 @@ type AppConfig struct {
 	Version     string `env:"VERSION"`
 }
 
+type ProbeConfig struct {
+	Address string `env:"PROBE_HTTP_ADDRESS" required:"true"`
+	Port    int    `env:"PROBE_HTTP_PORT" required:"true"`
+}
+
 type ServicesConfig struct {
-	ClockEmuUrl       string `env:"CLOCK_EMU_URL,required"`
+	ClockEmuGrpcUrl   string `env:"CLOCK_EMU_GRPC_URL,required"`
+	ClockEmuHealthUrl string `env:"CLOCK_EMU_HEALTH_URL,required"`
 	CottageManagerUrl string `env:"COTTAGE_MANAGER_URL,required"`
 	GuestManagerUrl   string `env:"GUEST_MANAGER_URL,required"`
 }
