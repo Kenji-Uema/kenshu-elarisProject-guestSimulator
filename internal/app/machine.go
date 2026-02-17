@@ -6,30 +6,32 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Kenji-Uema/guestEmulator/internal/app/state"
+	"github.com/Kenji-Uema/guestEmulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestEmulator/internal/app/utils"
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
+	"github.com/Kenji-Uema/guestEmulator/internal/tooling/telemetry"
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
 )
 
 type Machine struct {
-	zeroState                 state.ZeroState
-	initState                 state.State
-	stateMap                  map[state.State][]domain.WeightedTuple[state.State]
+	zeroStep                  steps.Step
+	firstStep                 steps.Step
+	stateMap                  map[steps.Step][]domain.WeightedTuple[steps.Step]
 	timeBetweenStepsInSeconds int
 }
 
 func (m *Machine) Start(ctx context.Context) error {
-	baseCtx, cancel := context.WithCancel(ctx)
+	machineCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	machineCtx, err := m.zeroState.Execute(baseCtx)
-	if err != nil {
+	machineCtx, span := telemetry.Tracer.Start(machineCtx, "Machine")
+	defer span.End()
+
+	if err := m.zeroStep.Execute(machineCtx); err != nil {
 		return err
 	}
-	var input any = domain.IgnoredField{}
-	s := m.initState
+	step := m.firstStep
 
 	ticker := time.NewTicker(time.Duration(m.timeBetweenStepsInSeconds) * time.Second)
 	defer ticker.Stop()
@@ -38,24 +40,29 @@ func (m *Machine) Start(ctx context.Context) error {
 		case <-machineCtx.Done():
 			return nil
 		case <-ticker.C:
-			nextInput, err := s.Execute(machineCtx, input)
-			if err != nil {
+			slog.InfoContext(machineCtx, "executing step", "step", step.Name())
+
+			if err := step.Validate(); err != nil {
+				return err
+			}
+			if err := step.Execute(machineCtx); err != nil {
 				return err
 			}
 
-			nextState := m.stateMap[s]
-			if nextState == nil {
+			nextStep := m.stateMap[step]
+			if nextStep == nil {
 				cancel()
 			} else {
-				input = nextInput
-				s = utils.PickRandomWeighted(nextState)
+				nextStep := utils.PickRandomWeighted(nextStep)
+				slog.InfoContext(machineCtx, "transitioning to state", "oldStep", step.Name(), "newStep", nextStep.Name())
+				step = nextStep
 			}
 		}
 	}
 }
 
-func readGraph(graphFile string, states map[string]state.State) (map[state.State][]domain.WeightedTuple[state.State], error) {
-	stateMap := make(map[state.State][]domain.WeightedTuple[state.State])
+func readGraph(graphFile string, states map[string]steps.Step) (map[steps.Step][]domain.WeightedTuple[steps.Step], error) {
+	stateMap := make(map[steps.Step][]domain.WeightedTuple[steps.Step])
 
 	graph, err := graphviz.ParseFile(graphFile)
 	if err != nil {
@@ -77,7 +84,7 @@ func readGraph(graphFile string, states map[string]state.State) (map[state.State
 
 			stateMap[states[headName]] = append(
 				stateMap[states[headName]],
-				domain.WeightedTuple[state.State]{Value: states[tailName], Weight: weight},
+				domain.WeightedTuple[steps.Step]{Value: states[tailName], Weight: weight},
 			)
 
 			return nil

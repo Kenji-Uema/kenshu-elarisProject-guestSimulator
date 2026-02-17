@@ -1,4 +1,4 @@
-package booking_state
+package booking_step
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/Kenji-Uema/guestEmulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestEmulator/internal/app/utils"
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
 	"github.com/Kenji-Uema/guestEmulator/internal/tooling/telemetry"
@@ -17,17 +18,34 @@ var numberOfNights = []int{3, 5, 7, 10, 14}
 var daysAhead = []int{5, 7, 14, 30, 45, 60, 90, 120}
 var window = 30
 
-type SelectPeriodState struct {
+type SelectPeriodStep struct {
 	clock  *grpc.Emu
 	client *resty.Client
+	state  *domain.State
 }
 
-func NewSelectPeriodState(clock *grpc.Emu, client *resty.Client) SelectPeriodState {
-	return SelectPeriodState{clock: clock, client: client}
+func NewSelectPeriodStep(state *domain.State, clock *grpc.Emu, client *resty.Client) steps.Step {
+	return &SelectPeriodStep{clock: clock, client: client, state: state}
 }
 
-func (s SelectPeriodState) Execute(ctx context.Context, cottageName string) (domain.Period, error) {
-	ctx, span := telemetry.Tracer.Start(ctx, "SelectPeriodState")
+func (s SelectPeriodStep) Name() string {
+	return "SelectPeriodStep"
+}
+
+func (s SelectPeriodStep) Validate() error {
+	if s.state == nil {
+		return fmt.Errorf("invalid state, state is nil")
+	}
+
+	if s.state.SelectedCottage == "" {
+		return fmt.Errorf("invalid state, selectedCottage is empty")
+	}
+
+	return nil
+}
+
+func (s SelectPeriodStep) Execute(ctx context.Context) error {
+	ctx, span := telemetry.Tracer.Start(ctx, "SelectPeriodStep")
 	defer span.End()
 
 	slog.InfoContext(ctx, "User selects a period of time")
@@ -37,7 +55,7 @@ func (s SelectPeriodState) Execute(ctx context.Context, cottageName string) (dom
 
 	now, err := s.clock.Now(ctx)
 	if err != nil {
-		return domain.Period{}, err
+		return err
 	}
 	from := now.AddDate(0, 0, searchPeriod)
 	to := from.AddDate(0, 0, searchPeriod+window)
@@ -45,27 +63,29 @@ func (s SelectPeriodState) Execute(ctx context.Context, cottageName string) (dom
 	resp, err := s.client.R().
 		SetContext(ctx).
 		SetQueryParams(map[string]string{"to": to.Format("2006-01-02"), "from": from.Format("2006-01-02")}).
-		Get(fmt.Sprintf("/cottage/%s/available-dates", cottageName))
+		Get(fmt.Sprintf("/cottage/%s/available-dates", s.state.SelectedCottage))
 
 	if err != nil {
-		return domain.Period{}, err
+		return err
 	}
 
 	if resp.IsError() {
-		return domain.Period{}, fmt.Errorf("error: %s", resp.Status())
+		return fmt.Errorf("error: %s", resp.Status())
 	}
 
-	var availablePeriods domain.CottageAvailablePeriod
+	var availablePeriods []domain.Period
 	if err := json.Unmarshal(resp.Body(), &availablePeriods); err != nil {
-		return domain.Period{}, err
+		return err
 	}
 
-	for _, period := range availablePeriods.Periods {
+	for _, period := range availablePeriods {
 		if period.End.Sub(period.Start).Hours()-float64(24*nights) >= 0 {
-			return period, nil
+			s.state.SelectedPeriod = &period
+			slog.InfoContext(ctx, "state updated, stay period selected", "selectedPeriod", period)
+			return nil
 		}
 	}
 
 	slog.WarnContext(ctx, "No suitable period found")
-	return domain.Period{}, nil
+	return nil
 }

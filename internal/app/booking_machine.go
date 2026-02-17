@@ -1,10 +1,9 @@
 package app
 
 import (
-	"log/slog"
-
-	"github.com/Kenji-Uema/guestEmulator/internal/app/state"
-	"github.com/Kenji-Uema/guestEmulator/internal/app/state/booking_state"
+	"github.com/Kenji-Uema/guestEmulator/internal/app/steps"
+	"github.com/Kenji-Uema/guestEmulator/internal/app/steps/booking_step"
+	"github.com/Kenji-Uema/guestEmulator/internal/app/steps/register_guest_step"
 	"github.com/Kenji-Uema/guestEmulator/internal/config"
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
 	"github.com/Kenji-Uema/guestEmulator/internal/transport/grpc"
@@ -15,25 +14,19 @@ func NewBookingMachine(machineConfig config.BookingMachineConfig, serviceConfig 
 	cottageClient := http.NewRestyClient(serviceConfig.CottageManagerUrl, serviceConfig.CottageManagerPort)
 	guestClient := http.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
 	clockEmu, err := grpc.NewClockEmu(serviceConfig)
-	defer func(clockEmu *grpc.Emu) {
-		err := clockEmu.Close()
-		if err != nil {
-			slog.Error("failed to close clockEmu", "err", err)
-		}
-	}(clockEmu)
 	if err != nil {
 		return nil, err
 	}
 
-	zeroState := state.NewInitState()
-	bookingMachineStates := map[string]state.State{
-		"End":                        state.Adapter[domain.IgnoredField, domain.IgnoredField]{State: state.NewEndState()},
-		"SelectCottage":              state.Adapter[[]string, string]{State: booking_state.NewSelectCottageState()},
-		"ListCottages":               state.Adapter[domain.IgnoredField, []string]{State: booking_state.NewListCottagesState(cottageClient)},
-		"SelectPeriod":               state.Adapter[string, domain.Period]{State: booking_state.NewSelectPeriodState(clockEmu, guestClient)},
-		"SearchBy_TypeAndPeriod":     state.Adapter[domain.IgnoredField, []domain.CottageAvailable]{State: booking_state.NewSearchByTypeAndPeriodState(cottageClient)},
-		"SelectCottage_PeriodPreSet": state.Adapter[[]domain.CottageAvailable, string]{State: booking_state.NewSelectCottagePeriodPreSetState()},
-		"BookCottage":                state.Adapter[domain.Cottage, domain.BookingConfirmation]{State: booking_state.NewBookCottageState(guestClient)},
+	state := &domain.State{}
+
+	bookingMachineStates := map[string]steps.Step{
+		"End":           steps.NewEndStep(state),
+		"SelectCottage": booking_step.NewSelectCottageStep(state),
+		"ListCottages":  booking_step.NewListCottagesStep(state, cottageClient),
+		"SelectPeriod":  booking_step.NewSelectPeriodStep(state, clockEmu, cottageClient),
+		"RegisterGuest": register_guest_step.NewRegisterGuestStep(guestClient, state),
+		"BookCottage":   booking_step.NewBookCottageStep(state, cottageClient),
 	}
 
 	stateMap, err := readGraph(machineConfig.GraphFile, bookingMachineStates)
@@ -42,8 +35,8 @@ func NewBookingMachine(machineConfig config.BookingMachineConfig, serviceConfig 
 	}
 
 	return &Machine{
-		zeroState:                 zeroState,
-		initState:                 bookingMachineStates["ListCottages"],
+		zeroStep:                  steps.NewInitStep(state),
+		firstStep:                 bookingMachineStates["ListCottages"],
 		stateMap:                  stateMap,
 		timeBetweenStepsInSeconds: machineConfig.TimeBetweenStepsInSeconds,
 	}, nil

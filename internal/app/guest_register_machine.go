@@ -1,8 +1,8 @@
 package app
 
 import (
-	"github.com/Kenji-Uema/guestEmulator/internal/app/state"
-	"github.com/Kenji-Uema/guestEmulator/internal/app/state/register_guest_state"
+	"github.com/Kenji-Uema/guestEmulator/internal/app/steps"
+	"github.com/Kenji-Uema/guestEmulator/internal/app/steps/register_guest_step"
 	"github.com/Kenji-Uema/guestEmulator/internal/config"
 	"github.com/Kenji-Uema/guestEmulator/internal/domain"
 	"github.com/Kenji-Uema/guestEmulator/internal/transport/http"
@@ -11,11 +11,12 @@ import (
 func NewGuestRegisterMachine(machineConfig config.GuestRegisterMachineConfig, serviceConfig config.ServicesConfig) (*Machine, error) {
 	guestClient := http.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
 
-	zeroState := state.NewInitState()
-	registerGuestStates := map[string]state.State{
-		"End":           state.Adapter[domain.IgnoredField, domain.IgnoredField]{State: state.NewEndState()},
-		"RegisterGuest": state.Adapter[domain.IgnoredField, string]{State: register_guest_state.NewRegisterGuestState(guestClient)},
-		"RetrieveGuest": state.Adapter[string, domain.IgnoredField]{State: register_guest_state.NewRetrieveGuestState(guestClient)},
+	state := &domain.State{}
+
+	registerGuestStates := map[string]steps.Step{
+		"End":           steps.NewEndStep(state),
+		"RegisterGuest": register_guest_step.NewRegisterGuestStep(guestClient, state),
+		"RetrieveGuest": register_guest_step.NewRetrieveGuestStep(guestClient, state),
 	}
 
 	stateMap, err := readGraph(machineConfig.GraphFile, registerGuestStates)
@@ -24,8 +25,8 @@ func NewGuestRegisterMachine(machineConfig config.GuestRegisterMachineConfig, se
 	}
 
 	return &Machine{
-		zeroState:                 zeroState,
-		initState:                 registerGuestStates["RegisterGuest"],
+		zeroStep:                  steps.NewInitStep(state),
+		firstStep:                 registerGuestStates["RegisterGuest"],
 		stateMap:                  stateMap,
 		timeBetweenStepsInSeconds: machineConfig.TimeBetweenStepsInSeconds,
 	}, nil

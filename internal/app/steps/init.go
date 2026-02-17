@@ -1,4 +1,4 @@
-package state
+package steps
 
 import (
 	"context"
@@ -12,14 +12,27 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-type InitState struct{}
-
-func NewInitState() *InitState {
-	return &InitState{}
+type InitStep struct {
+	state *domain.State
 }
 
-func (s InitState) Execute(ctx context.Context) (context.Context, error) {
-	ctx, span := telemetry.Tracer.Start(ctx, "InitState")
+func NewInitStep(state *domain.State) Step {
+	return &InitStep{state: state}
+}
+
+func (s InitStep) Name() string {
+	return "InitStep"
+}
+
+func (s InitStep) Validate() error {
+	if s.state == nil {
+		return fmt.Errorf("invalid state, state is nil")
+	}
+	return nil
+}
+
+func (s InitStep) Execute(ctx context.Context) error {
+	ctx, span := telemetry.Tracer.Start(ctx, "InitStep")
 	defer span.End()
 
 	slog.InfoContext(ctx, "Start process of booking a cottage")
@@ -33,8 +46,10 @@ func (s InitState) Execute(ctx context.Context) (context.Context, error) {
 		Email:      fmt.Sprintf("%s.%s@test.com", name[0], name[1]),
 	}
 
-	slog.InfoContext(ctx, "New person generated", "guest", guest)
 	span.SetAttributes(attribute.String("guest.Email", guest.Email))
 
-	return context.WithValue(ctx, "guest", guest), nil
+	s.state.Guest = &guest
+	slog.InfoContext(ctx, "state updated with new Guest", "guest", guest)
+
+	return nil
 }

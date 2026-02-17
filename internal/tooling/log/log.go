@@ -37,7 +37,8 @@ func (h *TraceHandler) WithGroup(name string) slog.Handler {
 
 func NewLogger() *slog.Logger {
 	base := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level:     slog.LevelInfo,
+		AddSource: true,
 	})
 
 	h := &TraceHandler{next: base}

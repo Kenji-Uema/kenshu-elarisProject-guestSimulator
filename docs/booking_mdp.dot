@@ -9,38 +9,27 @@ digraph booking {
     ListCottages
     SelectCottage
     SelectPeriod
-    SearchBy_TypeAndPeriod
-    SelectCottage_PeriodPreSet
+    RegisterGuest
+    BookCottage
 
-
-    ListCottages -> SelectCottage [weight=0.45]
-    ListCottages -> SearchBy_TypeAndPeriod [weight=0.55]
+    ListCottages -> SelectCottage [weight=0.80]
+    ListCottages -> End [weight=0.20]
 
     SelectCottage -> SelectPeriod [weight=0.60]
-    SelectCottage -> ListCottages [weight=0.40]
+    SelectCottage -> ListCottages [weight=0.30]
+    SelectCottage -> End [weight=0.10]
 
     SelectPeriod -> SelectPeriod [weight=0.30]
     SelectPeriod -> SelectCottage [weight=0.20]
-    SelectPeriod -> ListCottages [weight=0.10]
-    SelectPeriod -> BookCottage [weight=0.40]
+    SelectPeriod -> ListCottages [weight=0.05]
+    SelectPeriod -> RegisterGuest [weight=0.40]
+    SelectPeriod -> End [weight=0.05]
 
-    SearchBy_TypeAndPeriod -> ListCottages [weight=0.20]
-    SearchBy_TypeAndPeriod -> SearchBy_TypeAndPeriod [weight=0.30]
-    SearchBy_TypeAndPeriod -> SelectCottage_PeriodPreSet [weight=0.50]
-
-    SelectCottage_PeriodPreSet -> SelectCottage_PeriodPreSet [weight=0.15]
-    SelectCottage_PeriodPreSet -> SearchBy_TypeAndPeriod [weight=0.25]
-    SelectCottage_PeriodPreSet -> ListCottages [weight=0.10]
-    SelectCottage_PeriodPreSet -> BookCottage [weight=0.50]
+    RegisterGuest -> BookCottage [weight=0.90]
+    RegisterGuest -> End [weight=0.10]
 
     BookCottage -> SelectPeriod [weight=0.05]
     BookCottage -> SelectCottage [weight=0.05]
     BookCottage -> ListCottages [weight=0.05]
-    BookCottage -> SearchBy_TypeAndPeriod [weight=0.05]
-    BookCottage -> SelectCottage_PeriodPreSet [weight=0.05]
-    BookCottage -> End [weight=0.75]
-
-    { rank=source; Init }
-    { rank=sink; BookCottage }
-    { rank=sink; End }
+    BookCottage -> End [weight=0.85]
 }
