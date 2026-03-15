@@ -1,4 +1,4 @@
-module github.com/Kenji-Uema/guestEmulator
+module github.com/Kenji-Uema/guestSimulator
 
 go 1.25.6
 
@@ -32,6 +32,7 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.7 // indirect
+	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
 	github.com/tetratelabs/wazero v1.11.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.40.0 // indirect

@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/Kenji-Uema/guestEmulator/internal/config"
+	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"

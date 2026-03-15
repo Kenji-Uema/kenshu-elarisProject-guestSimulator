@@ -1,11 +1,11 @@
 package app
 
 import (
-	"github.com/Kenji-Uema/guestEmulator/internal/app/steps"
-	"github.com/Kenji-Uema/guestEmulator/internal/app/steps/register_guest_step"
-	"github.com/Kenji-Uema/guestEmulator/internal/config"
-	"github.com/Kenji-Uema/guestEmulator/internal/domain"
-	"github.com/Kenji-Uema/guestEmulator/internal/transport/http"
+	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
+	"github.com/Kenji-Uema/guestSimulator/internal/app/steps/register_guest_step"
+	"github.com/Kenji-Uema/guestSimulator/internal/config"
+	"github.com/Kenji-Uema/guestSimulator/internal/domain"
+	"github.com/Kenji-Uema/guestSimulator/internal/transport/http"
 )
 
 func NewGuestRegisterMachine(machineConfig config.GuestRegisterMachineConfig, serviceConfig config.ServicesConfig) (*Machine, error) {

@@ -7,11 +7,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/Kenji-Uema/guestEmulator/internal/app"
-	"github.com/Kenji-Uema/guestEmulator/internal/config"
-	"github.com/Kenji-Uema/guestEmulator/internal/tooling/log"
-	"github.com/Kenji-Uema/guestEmulator/internal/tooling/telemetry"
-	"github.com/Kenji-Uema/guestEmulator/internal/transport/http"
+	"github.com/Kenji-Uema/guestSimulator/internal/app"
+	"github.com/Kenji-Uema/guestSimulator/internal/config"
+	"github.com/Kenji-Uema/guestSimulator/internal/infra/mq"
+	"github.com/Kenji-Uema/guestSimulator/internal/tooling/log"
+	"github.com/Kenji-Uema/guestSimulator/internal/tooling/telemetry"
+	"github.com/Kenji-Uema/guestSimulator/internal/transport/http"
 )
 
 func main() {
@@ -36,7 +37,18 @@ func main() {
 		}
 	}()
 
-	probeServer := http.StartHTTPServer(configs.ProbeConfig, configs.ServicesConfig)
+	rabbitMqClient, err := mq.NewRabbitMqConnection(ctx, configs.RabbitMqConfig)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to init rabbitmq", "err", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if err := rabbitMqClient.Close(); err != nil {
+			slog.ErrorContext(ctx, "failed to close rabbitmq connection", "err", err)
+		}
+	}()
+
+	probeServer := http.StartHTTPServer(configs.ProbeConfig, configs.ServicesConfig, rabbitMqClient)
 	defer http.ShutDownHTTPServer(probeServer)
 
 	//machine, err := app.NewGuestRegisterMachine(configs.GuestRegisterMachineConfig, configs.ServicesConfig)

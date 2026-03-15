@@ -3,7 +3,7 @@ package utils
 import (
 	"math/rand"
 
-	"github.com/Kenji-Uema/guestEmulator/internal/domain"
+	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 )
 
 func PickRandom[T any](list []T) T {

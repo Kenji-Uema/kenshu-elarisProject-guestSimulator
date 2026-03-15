@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/Kenji-Uema/guestEmulator/internal/domain"
-	"github.com/Kenji-Uema/guestEmulator/internal/tooling/telemetry"
+	"github.com/Kenji-Uema/guestSimulator/internal/domain"
+	"github.com/Kenji-Uema/guestSimulator/internal/tooling/telemetry"
 	"github.com/brianvoe/gofakeit/v7"
 	"go.opentelemetry.io/otel/attribute"
 )

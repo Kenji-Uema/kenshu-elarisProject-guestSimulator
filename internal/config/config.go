@@ -9,6 +9,7 @@ import (
 type Configs struct {
 	AppConfig
 	ProbeConfig
+	RabbitMqConfig
 	ServicesConfig
 	BookingMachineConfig
 	GuestRegisterMachineConfig
@@ -23,6 +24,13 @@ type AppConfig struct {
 type ProbeConfig struct {
 	Address string `env:"PROBE_HTTP_ADDRESS,required"`
 	Port    int    `env:"PROBE_HTTP_PORT,required"`
+}
+
+type RabbitMqConfig struct {
+	Username string `env:"RABBITMQ_USERNAME,required"`
+	Password string `env:"RABBITMQ_PASSWORD,required"`
+	Host     string `env:"RABBITMQ_HOST,required"`
+	Port     int    `env:"RABBITMQ_PORT,required"`
 }
 
 type ServicesConfig struct {

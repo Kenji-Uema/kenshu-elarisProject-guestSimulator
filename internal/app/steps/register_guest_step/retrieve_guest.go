@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/Kenji-Uema/guestEmulator/internal/domain"
-	"github.com/Kenji-Uema/guestEmulator/internal/tooling/telemetry"
+	"github.com/Kenji-Uema/guestSimulator/internal/domain"
+	"github.com/Kenji-Uema/guestSimulator/internal/tooling/telemetry"
 	"github.com/go-resty/resty/v2"
 )
 

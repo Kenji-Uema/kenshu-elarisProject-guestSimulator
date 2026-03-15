@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Kenji-Uema/guestEmulator/internal/app/steps"
-	"github.com/Kenji-Uema/guestEmulator/internal/app/utils"
-	"github.com/Kenji-Uema/guestEmulator/internal/domain"
-	"github.com/Kenji-Uema/guestEmulator/internal/tooling/telemetry"
+	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
+	"github.com/Kenji-Uema/guestSimulator/internal/app/utils"
+	"github.com/Kenji-Uema/guestSimulator/internal/domain"
+	"github.com/Kenji-Uema/guestSimulator/internal/tooling/telemetry"
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
 )
