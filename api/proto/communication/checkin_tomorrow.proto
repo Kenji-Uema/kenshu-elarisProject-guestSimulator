@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package lodging.v1;
+option go_package = "github.com/Kenji-Uema/guestSimulator/internal/transport/grpc/pb/communication;communication";
+
+import "google/protobuf/timestamp.proto";
+
+message CheckInTomorrowNotification {
+  string booking_id = 1;
+  string guest_id = 2;
+  string cottage_name = 3;
+  google.protobuf.Timestamp check_in = 4;
+  google.protobuf.Timestamp check_out = 5;
+  int32 number_of_guests = 6;
+  google.protobuf.Timestamp notification_day = 7;
+}

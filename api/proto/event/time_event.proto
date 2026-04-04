@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package event;
+option go_package = "github.com/Kenji-Uema/guestSimulator/internal/domain/dto;dto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+message TimeEvent {
+  google.protobuf.Timestamp time = 1;
+}

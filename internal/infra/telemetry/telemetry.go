@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/Kenji-Uema/guestSimulator/internal/config"
+	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -18,7 +18,18 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 )
 
-func Init(ctx context.Context, cfg config.TelemetryConfig, appCfg config.AppConfig) (func(context.Context) error, error) {
+type Config struct {
+	Endpoint string
+	GrpcPort int
+	Insecure bool
+}
+
+type AppInfo struct {
+	ServiceName string
+	Version     string
+}
+
+func Init(ctx context.Context, cfg Config, appCfg AppInfo) (func(context.Context) error, error) {
 	otelResource, err := resource.New(ctx,
 		resource.WithTelemetrySDK(),
 		resource.WithAttributes(semconv.ServiceName(fmt.Sprintf("%s:%s", appCfg.ServiceName, appCfg.Version))))
@@ -44,6 +55,7 @@ func Init(ctx context.Context, cfg config.TelemetryConfig, appCfg config.AppConf
 
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(
+			b3.New(),
 			propagation.TraceContext{},
 			propagation.Baggage{},
 		),
@@ -70,7 +82,7 @@ func Init(ctx context.Context, cfg config.TelemetryConfig, appCfg config.AppConf
 	}, nil
 }
 
-func newTraceProvider(ctx context.Context, otelResource *resource.Resource, cfg config.TelemetryConfig) (*sdktrace.TracerProvider, error) {
+func newTraceProvider(ctx context.Context, otelResource *resource.Resource, cfg Config) (*sdktrace.TracerProvider, error) {
 	exporter, err := otlptracegrpc.New(ctx, otelTraceOptions(cfg)...)
 	if err != nil {
 		return nil, err
@@ -82,7 +94,7 @@ func newTraceProvider(ctx context.Context, otelResource *resource.Resource, cfg 
 	), nil
 }
 
-func newMeterProvider(ctx context.Context, otelResource *resource.Resource, cfg config.TelemetryConfig) (*sdkmetric.MeterProvider, error) {
+func newMeterProvider(ctx context.Context, otelResource *resource.Resource, cfg Config) (*sdkmetric.MeterProvider, error) {
 	exporter, err := otlpmetricgrpc.New(ctx, otelMetricOptions(cfg)...)
 	if err != nil {
 		return nil, err
@@ -94,21 +106,21 @@ func newMeterProvider(ctx context.Context, otelResource *resource.Resource, cfg 
 		sdkmetric.WithReader(reader)), nil
 }
 
-func otelTraceOptions(cfg config.TelemetryConfig) []otlptracegrpc.Option {
+func otelTraceOptions(cfg Config) []otlptracegrpc.Option {
 	opts := []otlptracegrpc.Option{
-		otlptracegrpc.WithEndpoint(fmt.Sprintf("%s:%d", cfg.OTLPEndpoint, cfg.OTLPGrpcPort)),
+		otlptracegrpc.WithEndpoint(fmt.Sprintf("%s:%d", cfg.Endpoint, cfg.GrpcPort)),
 	}
-	if cfg.OTLPInsecure {
+	if cfg.Insecure {
 		opts = append(opts, otlptracegrpc.WithInsecure())
 	}
 	return opts
 }
 
-func otelMetricOptions(cfg config.TelemetryConfig) []otlpmetricgrpc.Option {
+func otelMetricOptions(cfg Config) []otlpmetricgrpc.Option {
 	opts := []otlpmetricgrpc.Option{
-		otlpmetricgrpc.WithEndpoint(fmt.Sprintf("%s:%d", cfg.OTLPEndpoint, cfg.OTLPGrpcPort)),
+		otlpmetricgrpc.WithEndpoint(fmt.Sprintf("%s:%d", cfg.Endpoint, cfg.GrpcPort)),
 	}
-	if cfg.OTLPInsecure {
+	if cfg.Insecure {
 		opts = append(opts, otlpmetricgrpc.WithInsecure())
 	}
 	return opts

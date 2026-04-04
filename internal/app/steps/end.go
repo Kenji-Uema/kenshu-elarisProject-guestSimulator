@@ -5,7 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
-	"github.com/Kenji-Uema/guestSimulator/internal/tooling/telemetry"
+	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
 )
 
 type EndStep struct {

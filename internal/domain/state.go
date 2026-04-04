@@ -1,10 +1,10 @@
 package domain
 
 type State struct {
-	Guest           *Guest
-	GuestId         string
-	CottageNames    []string
-	SelectedCottage string
-	SelectedPeriod  *Period
-	BookingId       string
+	Guest        *Guest
+	GuestId      string
+	CottageNames []string
+	RedisKey     string
+	QueueName    string
+	RoutingKey   string
 }

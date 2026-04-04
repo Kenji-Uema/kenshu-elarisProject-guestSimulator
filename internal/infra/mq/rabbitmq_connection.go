@@ -20,11 +20,11 @@ const (
 type RabbitMqConnection struct {
 	mu     sync.RWMutex
 	conn   *amqp.Connection
-	cfg    config.RabbitMqConfig
+	cfg    config.RabbitMqConnConfig
 	closed bool
 }
 
-func NewRabbitMqConnection(ctx context.Context, cfg config.RabbitMqConfig) (*RabbitMqConnection, error) {
+func NewRabbitMqConnection(ctx context.Context, cfg config.RabbitMqConnConfig) (*RabbitMqConnection, error) {
 	c := &RabbitMqConnection{cfg: cfg}
 	if err := c.reconnectLocked(); err != nil {
 		return nil, err
@@ -84,8 +84,8 @@ func (c *RabbitMqConnection) reconnectLocked() error {
 
 	uri := amqp.URI{
 		Scheme:   "amqp",
-		Username: c.cfg.Username,
-		Password: c.cfg.Password,
+		Username: string(c.cfg.Username),
+		Password: string(c.cfg.Password),
 		Host:     c.cfg.Host,
 		Port:     c.cfg.Port,
 	}

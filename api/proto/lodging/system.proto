@@ -1,0 +1,40 @@
+syntax = "proto3";
+package lodging.v1;
+
+option go_package = "github.com/Kenji-Uema/guestManager/internal/domain/dto;dto";
+
+// Notifications sent by the system to drive guest flow.
+enum SystemNotification {
+  // Default zero value.
+  SYSTEM_NOTIFICATION_UNSPECIFIED = 0;
+  // System is validating booking information.
+  BOOKING_CHECKING = 1;
+  // Check-in completed successfully.
+  CHECK_IN_COMPLETE = 2;
+  // Dinner is available.
+  DINNER_READY = 3;
+  // System asks guest to prepare cottage for sleep mode.
+  PREPARE_COTTAGE_TO_SLEEP = 4;
+  // Breakfast is available.
+  BREAKFAST_READY = 5;
+  // Checkout reminder for next day.
+  CHECK_OUT_TOMORROW = 6;
+
+  CHECK_OUT_COMPLETE = 7;
+  // Checkout is due today.
+  CHECK_OUT_TODAY = 8;
+}
+
+// Requests sent by the system that require guest data/action.
+enum SystemRequest {
+  // Default zero value.
+  SYSTEM_REQUEST_UNSPECIFIED = 0;
+  // Request guest document identifier.
+  REQUEST_DOCUMENT = 1;
+  // Request guest booking identifier.
+  REQUEST_BOOKING_NUMBER = 2;
+  // Instruct guest to take the cottage key.
+  GIVE_COTTAGE_KEY = 3;
+  // Request guest to return the cottage key.
+  REQUEST_COTTAGE_KEY = 4;
+}

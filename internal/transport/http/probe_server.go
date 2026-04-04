@@ -10,21 +10,25 @@ import (
 
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/mq"
+	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
 	"github.com/Kenji-Uema/guestSimulator/internal/transport/http/probe"
 )
 
-func StartHTTPServer(probeConfig config.ProbeConfig, serviceConfig config.ServicesConfig, rabbitMqClient *mq.RabbitMqConnection) *http.Server {
+func StartHTTPServer(probeConfig config.ProbeConfig, serviceConfig config.ServicesConfig, rabbitMqClient *mq.RabbitMqConnection, redisClient *redisc.Redis) *http.Server {
 	cottageClient := NewRestyClient(serviceConfig.CottageManagerUrl, serviceConfig.CottageManagerPort)
 	guestClient := NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", probe.HealthHandler())
-	mux.HandleFunc("/readyz", probe.ReadinessHandler(rabbitMqClient, cottageClient, guestClient))
+	mux.HandleFunc("/readyz", probe.ReadinessHandler(rabbitMqClient, redisClient, cottageClient, guestClient))
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", probeConfig.Address, probeConfig.Port),
 		Handler:           mux,
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadHeaderTimeout: time.Duration(probeConfig.ReadHeaderTimeoutInSeconds) * time.Second,
+		ReadTimeout:       time.Duration(probeConfig.ReadTimeoutInSeconds) * time.Second,
+		WriteTimeout:      time.Duration(probeConfig.WriteTimeoutInSeconds) * time.Second,
+		IdleTimeout:       time.Duration(probeConfig.IdleTimeoutInSeconds) * time.Second,
 	}
 
 	go func() {

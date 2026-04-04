@@ -1,0 +1,116 @@
+digraph GuestJourneyStateMachine {
+    graph [
+        rankdir=TB,
+        splines=ortho,
+        nodesep=0.45,
+        ranksep=0.8,
+        fontname="Helvetica"
+    ];
+
+    node [
+        shape=box,
+        style="rounded,filled",
+        fontname="Helvetica",
+        color="#23313a",
+        fillcolor="#f7f1e8"
+    ];
+
+    edge [
+        fontname="Helvetica",
+        color="#55636d"
+    ];
+
+    start [shape=circle, width=0.18, label="", color="#23313a", fillcolor="#23313a"];
+    end [shape=doublecircle, label="End", fillcolor="#d7ecd2"];
+
+    guest_registration [label="Guest Registration"];
+    booking_pending [label="Booking Pending"];
+    invoice_reissue [label="Invoice Reissue Poll"];
+    payment_processing [label="Payment Processing"];
+    booking_confirmation [label="Booking Confirmation Poll"];
+    showing_up [label="Showing Up"];
+    proving_identity [label="Proving Identity"];
+    fallback_lookup [label="Fallback Lookup"];
+    key_handoff [label="Key Handoff"];
+    first_entry [label="First Entry"];
+    first_evening [label="First Evening"];
+    overnight [label="Overnight"];
+    day_start [label="Day Start"];
+    breakfast_gate [label="Breakfast Gate"];
+    day_activity [label="Day Activity"];
+    dinner_gate [label="Dinner Gate"];
+    checkout_gate [label="Checkout Gate"];
+    key_return [label="Key Return"];
+    departure [label="Departure"];
+
+    start -> guest_registration [label="journey starts"];
+    guest_registration -> booking_pending [label="register guest\nwith billing address"];
+    booking_pending -> invoice_reissue [label="book cottage\nstatus pending"];
+    invoice_reissue -> payment_processing [label="invoice_number becomes available"];
+    payment_processing -> booking_confirmation [label="card payment succeeds"];
+    booking_confirmation -> showing_up [label="booking status = confirmed"];
+
+    showing_up -> proving_identity [
+        label="15:00 UTC\nSHOW_FOR_CHECKIN"
+    ];
+
+    proving_identity -> fallback_lookup [
+        label="REQUEST_DOCUMENT\nbooking lookup fails"
+    ];
+
+    proving_identity -> key_handoff [
+        label="REQUEST_DOCUMENT -> document reply\nBOOKING_CHECKING\nCHECK_IN_COMPLETE"
+    ];
+
+    fallback_lookup -> key_handoff [
+        label="REQUEST_BOOKING_NUMBER\nbooking id reply\nCHECK_IN_COMPLETE"
+    ];
+
+    key_handoff -> first_entry [
+        label="GIVE_COTTAGE_KEY\nkey reply\nTAKE_COTTAGE_KEY"
+    ];
+
+    first_entry -> first_evening [
+        label="ENTER_COTTAGE"
+    ];
+
+    first_evening -> overnight [
+        label="16:00 GO_FOR_A_BATH\n18:00 + DINNER_READY -> GO_FOR_DINNER\n22:00 GO_TO_SLEEP"
+    ];
+
+    overnight -> checkout_gate [
+        label="no extra full stay days"
+    ];
+
+    overnight -> day_start [
+        label="extra full stay days exist"
+    ];
+
+    day_start -> breakfast_gate [
+        label="07:00 WAKEUP"
+    ];
+
+    breakfast_gate -> day_activity [
+        label="08:00 + BREAKFAST_READY -> GO_FOR_BREAKFAST\n10:00 LEAVE_CLEANUP_NOTIFICATION\n11:00 ENJOY_RESORT"
+    ];
+
+    day_activity -> dinner_gate [
+        label="16:00 GO_FOR_A_BATH"
+    ];
+
+    dinner_gate -> overnight [
+        label="18:00 + DINNER_READY -> GO_FOR_DINNER\n22:00 GO_TO_SLEEP\nrepeat until checkout day"
+    ];
+
+    checkout_gate -> key_return [
+        label="CHECK_OUT_TODAY\nLEAVE_COTTAGE\nPROCEED_TO_CHECKOUT"
+    ];
+
+    key_return -> departure [
+        label="REQUEST_COTTAGE_KEY\nkey return reply\nRETURN_COTTAGE_KEY"
+    ];
+
+    departure -> end [
+        label="CHECK_OUT_COMPLETE"
+    ];
+}

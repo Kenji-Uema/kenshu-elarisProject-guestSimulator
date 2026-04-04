@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
-	"github.com/Kenji-Uema/guestSimulator/internal/tooling/telemetry"
+	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
 	"github.com/brianvoe/gofakeit/v7"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -40,10 +40,11 @@ func (s InitStep) Execute(ctx context.Context) error {
 	name := strings.Split(gofakeit.Name(), " ")
 
 	guest := domain.Guest{
-		DocumentId: gofakeit.SSN(),
-		GivenNames: name[0],
-		Surname:    name[1],
-		Email:      fmt.Sprintf("%s.%s@test.com", name[0], name[1]),
+		DocumentId:     gofakeit.SSN(),
+		GivenNames:     name[0],
+		Surname:        name[1],
+		Email:          fmt.Sprintf("%s.%s@test.com", name[0], name[1]),
+		BillingAddress: gofakeit.Address().Address,
 	}
 
 	span.SetAttributes(attribute.String("guest.Email", guest.Email))

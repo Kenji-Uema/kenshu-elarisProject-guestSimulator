@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package communication.v1;
+option go_package = "github.com/Kenji-Uema/guestSimulator/internal/transport/grpc/pb/communication;communication";
+
+import "google/protobuf/timestamp.proto";
+
+message PaymentRequest {
+  string invoice_number = 1;
+  string description = 2;
+
+  Money total = 3;
+
+  google.protobuf.Timestamp issued_at = 4;
+  google.protobuf.Timestamp expires_at = 5;
+
+  BookingSummary booking = 6;
+  PayerSummary payer = 7;
+
+  repeated PaymentOption options = 8;
+}
+
+message Money {
+  int64 amount = 1;
+  string currency = 2;
+}
+
+message PaymentOption {
+  string method = 1;
+  string payment_url = 2;
+  string instructions = 3;
+}
+
+message BookingSummary {
+  string cottage_name = 2;
+  int32 nights = 3;
+  int32 number_of_guests = 4;
+}
+
+message PayerSummary {
+  string name = 1;
+  string email = 2;
+}

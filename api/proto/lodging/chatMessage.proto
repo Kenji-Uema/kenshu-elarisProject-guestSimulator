@@ -1,0 +1,73 @@
+syntax = "proto3";
+package lodging.v1;
+
+option go_package = "github.com/Kenji-Uema/guestManager/internal/domain/dto;dto";
+
+import "lodging/guest.proto";
+import "lodging/system.proto";
+
+// Transport envelope used for websocket exchange between guest and system.
+message ChatMessage {
+  // Unique ID for this message.
+  string message_id = 1;
+  // Correlates request/response pairs across messages.
+  string correlation_id = 2;
+  // Originating actor.
+  Sender sender = 4;
+  // Protocol contract version (for example: "lodging.v1").
+  string protocol_version = 12;
+  // Per-message trace propagation payload.
+  map<string, string> trace_context = 13;
+
+  // Exactly one payload variant per envelope.
+  oneof payload {
+    // Guest-initiated lifecycle action.
+    GuestAction guest_action = 6;
+    // Guest data/action response to a system request.
+    GuestResponse guest_response = 7;
+    // Informational event emitted by the system.
+    SystemNotification system_notification = 8;
+    // Action/data request emitted by the system.
+    SystemRequest system_request = 9;
+    // Delivery/processing acknowledgment for a prior message.
+    Ack ack = 10;
+  }
+}
+
+// Actor that produced the message.
+enum Sender {
+  // Default zero value.
+  SENDER_UNSPECIFIED = 0;
+  // Guest-originated message.
+  SENDER_GUEST = 1;
+  // System-originated message.
+  SENDER_SYSTEM = 2;
+}
+
+// Acknowledges a previously received message.
+message Ack {
+  // Message ID being acknowledged.
+  string acknowledged_message_id = 1;
+  // Ack processing result.
+  AckStatus status = 2;
+  // Machine-readable result code. Clients should branch on this value.
+  ErrorCode code = 3;
+}
+
+// Acknowledgment outcome.
+enum AckStatus {
+  // Default zero value.
+  ACK_STATUS_UNSPECIFIED = 0;
+  // Message accepted and processed.
+  ACK_STATUS_ACCEPTED = 1;
+  // Message rejected and not processed.
+  ACK_STATUS_REJECTED = 2;
+}
+
+// Stable machine-readable error codes for protocol and domain handling.
+enum ErrorCode {
+  // Default zero value.
+  ERROR_CODE_UNSPECIFIED = 0;
+  // No error / successful processing.
+  ERROR_CODE_NONE = 1;
+}

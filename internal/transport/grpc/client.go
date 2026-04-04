@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
-	clockEmuProto "github.com/Kenji-Uema/guestSimulator/internal/transport/grpc/pb/clockEmu"
+	clock "github.com/Kenji-Uema/guestSimulator/internal/transport/grpc/pb/clock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -16,7 +16,7 @@ import (
 
 type Emu struct {
 	conn   *grpc.ClientConn
-	client clockEmuProto.ClockServiceClient
+	client clock.ClockServiceClient
 }
 
 func NewClockEmu(cfg config.ServicesConfig) (*Emu, error) {
@@ -28,7 +28,7 @@ func NewClockEmu(cfg config.ServicesConfig) (*Emu, error) {
 		return nil, err
 	}
 
-	return &Emu{conn: conn, client: clockEmuProto.NewClockServiceClient(conn)}, nil
+	return &Emu{conn: conn, client: clock.NewClockServiceClient(conn)}, nil
 }
 
 func (e *Emu) Close() error {

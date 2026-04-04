@@ -1,0 +1,79 @@
+syntax = "proto3";
+package lodging.v1;
+
+option go_package = "github.com/Kenji-Uema/guestManager/internal/domain/dto;dto";
+
+// Actions initiated by a guest during the stay lifecycle.
+enum GuestAction {
+  // Default zero value.
+  GUEST_ACTION_UNSPECIFIED = 0;
+  // Guest arrives to start check-in.
+  SHOW_FOR_CHECKIN = 1;
+
+  SHOW_DOCUMENT = 2;
+  SHOW_BOOKING_NUMBER = 3;
+  // Guest enters the assigned cottage.
+  ENTER_COTTAGE = 4;
+  // Guest leaves the assigned cottage.
+  LEAVE_COTTAGE = 5;
+  // Guest leaves cottage to use bath facilities.
+  GO_FOR_A_BATH = 6;
+  // Guest comes back from bath facilities.
+  RETURN_FROM_BATH = 7;
+  // Guest goes to dinner.
+  GO_FOR_DINNER = 8;
+  // Guest goes to breakfast.
+  GO_FOR_BREAKFAST = 9;
+  // Guest goes to sleep.
+  GO_TO_SLEEP = 10;
+  // Guest wakes up.
+  WAKEUP = 11;
+  // Guest notifies they are leaving for cleanup.
+  LEAVE_CLEANUP_NOTIFICATION = 12;
+  // Guest stays in resort common areas.
+  ENJOY_RESORT = 13;
+  // Guest proceeds to checkout process.
+  PROCEED_TO_CHECKOUT = 14;
+
+  RETURN_COTTAGE_KEY = 15;
+  TAKE_COTTAGE_KEY = 16;
+}
+
+// Data supplied by a guest in response to a system request.
+message GuestResponse {
+  // Exactly one guest response payload per message.
+  oneof payload {
+    // Guest provides a document identifier.
+    ShowDocument show_document = 1;
+    // Guest provides a booking identifier.
+    ShowBookingNumber show_booking_number = 2;
+    // Guest confirms they received a cottage key.
+    ReceiveCottageKey receive_cottage_key = 3;
+    // Guest confirms they returned a cottage key.
+    ReturnCottageKey return_cottage_key = 4;
+  }
+}
+
+// Guest shares a document identifier.
+message ShowDocument {
+  // Resort-issued or booking-linked document ID.
+  string document_id = 1;
+}
+
+// Guest shares a booking identifier.
+message ShowBookingNumber {
+  // Reservation/booking ID.
+  string booking_id = 1;
+}
+
+// Guest confirms key pickup.
+message ReceiveCottageKey {
+  // Physical/digital cottage key ID.
+  string cottage_key_id = 1;
+}
+
+// Guest confirms key return.
+message ReturnCottageKey {
+  // Physical/digital cottage key ID.
+  string cottage_key_id = 1;
+}

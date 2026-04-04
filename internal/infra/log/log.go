@@ -12,6 +12,23 @@ type TraceHandler struct {
 	next slog.Handler
 }
 
+func NewLogger() *slog.Logger {
+	base := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level:     slog.LevelInfo,
+		AddSource: true,
+	})
+
+	h := &TraceHandler{next: base}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
+	return slog.New(h).With(
+		"app", hostname,
+	)
+}
+
 func (h *TraceHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	return h.next.Enabled(ctx, level)
 }
@@ -33,21 +50,4 @@ func (h *TraceHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 
 func (h *TraceHandler) WithGroup(name string) slog.Handler {
 	return &TraceHandler{next: h.next.WithGroup(name)}
-}
-
-func NewLogger() *slog.Logger {
-	base := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level:     slog.LevelInfo,
-		AddSource: true,
-	})
-
-	h := &TraceHandler{next: base}
-
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = "unknown"
-	}
-	return slog.New(h).With(
-		"app", hostname,
-	)
 }

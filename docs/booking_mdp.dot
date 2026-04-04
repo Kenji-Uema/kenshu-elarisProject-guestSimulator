@@ -1,35 +1,60 @@
 digraph booking {
-    rankdir=TB;
-    nodesep=0.5;
-    ranksep=1.5;
+    graph [
+        rankdir=TB,
+        splines=ortho,
+        nodesep=0.55,
+        ranksep=0.95,
+        pad=0.2,
+        bgcolor="white",
+        fontname="Helvetica"
+    ];
 
-    node [shape=box, style=rounded]
-    End [shape=oval]
+    node [
+        shape=box,
+        style="rounded,filled",
+        fontname="Helvetica",
+        fontsize=12,
+        margin="0.16,0.10",
+        color="#2d3b45",
+        fillcolor="#f6efe4"
+    ];
 
-    ListCottages
-    SelectCottage
-    SelectPeriod
-    RegisterGuest
-    BookCottage
+    edge [
+        fontname="Helvetica",
+        fontsize=10,
+        color="#5d6d78",
+        penwidth=1.4,
+        arrowsize=0.8
+    ];
 
-    ListCottages -> SelectCottage [weight=0.80]
-    ListCottages -> End [weight=0.20]
+    End [shape=doublecircle, label="End", fillcolor="#d7ecd2"];
 
-    SelectCottage -> SelectPeriod [weight=0.60]
-    SelectCottage -> ListCottages [weight=0.30]
-    SelectCottage -> End [weight=0.10]
+    ListCottages [label="List Cottages"];
+    SelectCottage [label="Select Cottage"];
+    SelectPeriod [label="Select Period"];
+    RegisterGuest [label="Register Guest"];
+    BookCottage [label="Book Cottage"];
 
-    SelectPeriod -> SelectPeriod [weight=0.30]
-    SelectPeriod -> SelectCottage [weight=0.20]
-    SelectPeriod -> ListCottages [weight=0.05]
-    SelectPeriod -> RegisterGuest [weight=0.40]
-    SelectPeriod -> End [weight=0.05]
+    ListCottages -> SelectCottage [weight=0.80, label="0.80"];
+    ListCottages -> End [weight=0.20, label="0.20"];
 
-    RegisterGuest -> BookCottage [weight=0.90]
-    RegisterGuest -> End [weight=0.10]
+    SelectCottage -> SelectPeriod [weight=0.60, label="0.60"];
+    SelectCottage -> ListCottages [weight=0.30, label="0.30"];
+    SelectCottage -> End [weight=0.10, label="0.10"];
 
-    BookCottage -> SelectPeriod [weight=0.05]
-    BookCottage -> SelectCottage [weight=0.05]
-    BookCottage -> ListCottages [weight=0.05]
-    BookCottage -> End [weight=0.85]
+    SelectPeriod -> SelectPeriod [weight=0.30, label="0.30", xlabel="adjust dates"];
+    SelectPeriod -> SelectCottage [weight=0.20, label="0.20"];
+    SelectPeriod -> ListCottages [weight=0.05, label="0.05"];
+    SelectPeriod -> RegisterGuest [weight=0.40, label="0.40"];
+    SelectPeriod -> End [weight=0.05, label="0.05"];
+
+    RegisterGuest -> BookCottage [weight=0.90, label="0.90"];
+    RegisterGuest -> End [weight=0.10, label="0.10"];
+
+    BookCottage -> SelectPeriod [weight=0.05, label="0.05"];
+    BookCottage -> SelectCottage [weight=0.05, label="0.05"];
+    BookCottage -> ListCottages [weight=0.05, label="0.05"];
+    BookCottage -> End [weight=0.85, label="0.85"];
+
+    { rank=sink; End }
 }

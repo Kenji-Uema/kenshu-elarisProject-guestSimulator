@@ -1,16 +1,39 @@
 digraph guest_register {
-    rankdir=TB;
-    nodesep=0.5;
-    ranksep=1.5;
+    graph [
+        rankdir=TB,
+        splines=ortho,
+        nodesep=0.55,
+        ranksep=0.95,
+        pad=0.2,
+        bgcolor="white",
+        fontname="Helvetica"
+    ];
 
-    node [shape=box, style=rounded]
-    End [shape=oval]
+    node [
+        shape=box,
+        style="rounded,filled",
+        fontname="Helvetica",
+        fontsize=12,
+        margin="0.16,0.10",
+        color="#23313a",
+        fillcolor="#eef4f0"
+    ];
 
-    RegisterGuest
-    RetrieveGuest
+    edge [
+        fontname="Helvetica",
+        fontsize=10,
+        color="#55636d",
+        penwidth=1.4,
+        arrowsize=0.8
+    ];
 
-    RegisterGuest -> RetrieveGuest [weight=1.0]
-    RetrieveGuest -> End [weight=1.0]
+    End [shape=doublecircle, label="End", fillcolor="#d7ecd2"];
+
+    RegisterGuest [label="Register Guest"];
+    RetrieveGuest [label="Retrieve Guest"];
+
+    RegisterGuest -> RetrieveGuest [weight=1.0, label="1.00"];
+    RetrieveGuest -> End [weight=1.0, label="1.00"];
 
     { rank=source; Init }
     { rank=sink; End }

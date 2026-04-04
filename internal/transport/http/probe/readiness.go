@@ -6,15 +6,21 @@ import (
 	"net/http"
 
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/mq"
+	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
 	"github.com/go-resty/resty/v2"
 )
 
-func ReadinessHandler(rabbitMqClient *mq.RabbitMqConnection, cottageClient *resty.Client, guestClient *resty.Client) http.HandlerFunc {
+func ReadinessHandler(rabbitMqClient *mq.RabbitMqConnection, redisClient *redisc.Redis, cottageClient *resty.Client, guestClient *resty.Client) http.HandlerFunc {
 	ctx := context.Background()
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !rabbitMqClient.IsConnectionOpen() {
 			http.Error(w, "RabbitMQ connection is not open", http.StatusServiceUnavailable)
+			return
+		}
+
+		if err := redisClient.Ping(r.Context()); err != nil {
+			http.Error(w, fmt.Sprintf("Redis ping failed; err=%s", err.Error()), http.StatusServiceUnavailable)
 			return
 		}
 
