@@ -64,7 +64,7 @@ func (s BookCottageStep) Execute(ctx context.Context) error {
 
 	resp, err := s.client.R().
 		SetContext(ctx).
-		SetBody(booking.BookingRequest{
+		SetBody(booking.Request{
 			GuestId:        s.state.GuestId,
 			NumberOfGuests: 1,
 			CheckInDate:    selected.SelectedPeriod.Start.Format("2006-01-02"),
@@ -84,7 +84,7 @@ func (s BookCottageStep) Execute(ctx context.Context) error {
 		return fmt.Errorf("error: %s", resp.Status())
 	}
 
-	var bookingConfirmation booking.BookingConfirmation
+	var bookingConfirmation booking.Confirmation
 	if err := json.Unmarshal(resp.Body(), &bookingConfirmation); err != nil {
 		return err
 	}

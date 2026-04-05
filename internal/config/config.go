@@ -16,7 +16,8 @@ func (s Secret) String() string {
 type Configs struct {
 	AppConfig
 	ProbeConfig
-	RabbitMqConfig
+	RabbitMqConnConfig
+	RabbitMqConsumersConfig
 	RedisConfig
 	ServicesConfig
 	FlowsConfig
@@ -47,6 +48,18 @@ type RedisConfig struct {
 	Host     string `env:"REDIS_HOST,required" envDefault:"localhost"`
 	Port     int    `env:"REDIS_PORT,required" envDefault:"6379"`
 	DB       int    `env:"REDIS_DB" envDefault:"0"`
+}
+
+type RabbitMqConsumersConfig struct {
+	HourChange    RabbitMqConsumerConfig `envPrefix:"HOUR_CHANGE_"`
+	Communication RabbitMqConsumerConfig `envPrefix:"COMMUNICATION_"`
+}
+
+type RabbitMqConnConfig struct {
+	Username Secret `env:"RABBITMQ_USERNAME,required"`
+	Password Secret `env:"RABBITMQ_PASSWORD,required"`
+	Host     string `env:"RABBITMQ_HOST,required"`
+	Port     int    `env:"RABBITMQ_PORT,required"`
 }
 
 type ServicesConfig struct {

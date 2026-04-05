@@ -1,6 +1,6 @@
 package booking
 
-type BookingRequest struct {
+type Request struct {
 	GuestId        string `json:"mainGuest"`
 	NumberOfGuests int    `json:"numberOfGuests"`
 	CheckInDate    string `json:"checkInDate"`
@@ -11,6 +11,6 @@ type BookingRequest struct {
 	BillingAddress string `json:"billingAddress"`
 }
 
-type BookingConfirmation struct {
+type Confirmation struct {
 	Id string `json:"bookingId"`
 }

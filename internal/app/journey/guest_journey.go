@@ -7,6 +7,7 @@ import (
 
 	"github.com/Kenji-Uema/guestSimulator/internal/app/flows"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/journey/journey_services"
+	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto/guest_registration"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
@@ -23,12 +24,13 @@ type GuestJourney struct {
 	paymentFlow       *flows.Flow
 	lodgingFlow       *flows.LodgingFlow
 	rabbitConsumer    port.RabbitConsumer
+	communicationCfg  config.RabbitMqConsumerConfig
 	communication     *journey_services.GuestCommunicationBus
 }
 
 func NewGuestJourney(state *domain.State,
 	guestRegisterFlow *flows.Flow, bookingFlow *flows.Flow, paymentFlow *flows.Flow, lodgingFlow *flows.LodgingFlow,
-	rabbitConsumer port.RabbitConsumer, cache port.Cache) (*GuestJourney, error) {
+	rabbitConsumer port.RabbitConsumer, cache port.Cache, communicationCfg config.RabbitMqConsumerConfig) (*GuestJourney, error) {
 
 	communication := journey_services.NewGuestCommunicationBus()
 
@@ -45,6 +47,7 @@ func NewGuestJourney(state *domain.State,
 		paymentFlow:       paymentFlow,
 		lodgingFlow:       lodgingFlow,
 		rabbitConsumer:    rabbitConsumer,
+		communicationCfg:  communicationCfg,
 		communication:     communication,
 	}, nil
 }
@@ -163,7 +166,7 @@ func (g *GuestJourney) setupCommunication(ctx context.Context) error {
 	ctx, span := telemetry.Tracer.Start(ctx, "GuestJourneyCommunication")
 	defer span.End()
 
-	return journey_services.SetupCommunication(ctx, g.state, g.rabbitConsumer, g.communication)
+	return journey_services.SetupCommunication(ctx, g.state, g.rabbitConsumer, g.communicationCfg, g.communication)
 }
 
 func (g *GuestJourney) cleanupGuestJourney(ctx context.Context) error {

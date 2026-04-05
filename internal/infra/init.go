@@ -24,10 +24,10 @@ type Redis struct {
 	Close  func() error
 }
 
-func NewRabbitmq(ctx context.Context, cfg config.RabbitMqConfig) (Rabbitmq, error) {
+func NewRabbitmq(ctx context.Context, connCfg config.RabbitMqConnConfig, hourChangeCfg config.RabbitMqConsumerConfig) (Rabbitmq, error) {
 	cleanup := make([]func(context.Context) error, 0, 2)
 
-	connection, err := mq.NewRabbitMqConnection(ctx, cfg.Conn)
+	connection, err := mq.NewRabbitMqConnection(ctx, connCfg)
 	if err != nil {
 		return Rabbitmq{}, err
 	}
@@ -35,7 +35,7 @@ func NewRabbitmq(ctx context.Context, cfg config.RabbitMqConfig) (Rabbitmq, erro
 		return connection.Close()
 	})
 
-	consumer, err := mq.NewRabbitmqConsumer(connection, cfg.TimeEvent.Consume())
+	consumer, err := mq.NewRabbitmqConsumer(connection, hourChangeCfg.Consume)
 	if err != nil {
 		_ = runCleanup(ctx, cleanup)
 		return Rabbitmq{}, err
@@ -44,12 +44,12 @@ func NewRabbitmq(ctx context.Context, cfg config.RabbitMqConfig) (Rabbitmq, erro
 		return consumer.CloseChannel()
 	})
 
-	if err := consumer.DeclareQueue(ctx, cfg.TimeEvent.Queue()); err != nil {
+	if err := consumer.DeclareQueue(ctx, hourChangeCfg.Queue); err != nil {
 		_ = runCleanup(ctx, cleanup)
 		return Rabbitmq{}, fmt.Errorf("declare hour event queue: %w", err)
 	}
 
-	if err := consumer.BindQueue(ctx, cfg.TimeEvent.Binding()); err != nil {
+	if err := consumer.BindQueue(ctx, hourChangeCfg.Binding); err != nil {
 		_ = runCleanup(ctx, cleanup)
 		return Rabbitmq{}, fmt.Errorf("bind hour event queue: %w", err)
 	}

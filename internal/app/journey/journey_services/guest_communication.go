@@ -21,7 +21,7 @@ const (
 	checkinTomorrowMessageType     = "lodging.v1.CheckInTomorrowNotification"
 )
 
-func SetupCommunication(ctx context.Context, state *domain.State, consumer port.RabbitConsumer, bus *GuestCommunicationBus) error {
+func SetupCommunication(ctx context.Context, state *domain.State, consumer port.RabbitConsumer, cfg config.RabbitMqConsumerConfig, bus *GuestCommunicationBus) error {
 
 	if state == nil {
 		return fmt.Errorf("invalid state, state is nil")
@@ -39,21 +39,20 @@ func SetupCommunication(ctx context.Context, state *domain.State, consumer port.
 	state.QueueName = guestQueuePrefix + state.GuestId
 	state.RoutingKey = guestRoutingKeyPrefix + state.GuestId
 
-	if err := consumer.DeclareQueue(ctx, config.QueueConfig{
-		Name:       state.QueueName,
-		Durable:    false,
-		AutoDelete: true,
-		Exclusive:  false,
-		NoWait:     false,
-	}); err != nil {
+	queueCfg := cfg.Queue
+	queueCfg.Name = state.QueueName
+	queueCfg.Durable = false
+	queueCfg.AutoDelete = true
+	if err := consumer.DeclareQueue(ctx, queueCfg); err != nil {
 		_ = consumer.CloseChannel()
 		return err
 	}
-	if err := consumer.BindQueue(ctx, config.BindingConfig{
-		ExchangeName: guestCommunicationExchange,
-		RoutingKey:   state.RoutingKey,
-		NoWait:       false,
-	}); err != nil {
+	bindingCfg := cfg.Binding
+	if bindingCfg.ExchangeName == "" {
+		bindingCfg.ExchangeName = guestCommunicationExchange
+	}
+	bindingCfg.RoutingKey = state.RoutingKey
+	if err := consumer.BindQueue(ctx, bindingCfg); err != nil {
 		_ = consumer.CloseChannel()
 		return err
 	}

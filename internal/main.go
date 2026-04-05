@@ -30,6 +30,7 @@ type guestJourneyFactoryDeps struct {
 	flowConfig              config.FlowsConfig
 	servicesConfig          config.ServicesConfig
 	rabbitConnection        *mq.RabbitMqConnection
+	communicationConsumer   config.RabbitMqConsumerConfig
 	redisCache              *redisc.Cache
 	clock                   port.Clock
 	hourNotificationService services.HourNotificationService
@@ -75,7 +76,7 @@ func buildGuestJourney(deps guestJourneyFactoryDeps) (*journey.GuestJourney, err
 		return nil, err
 	}
 
-	guestConsumer, err := mq.NewRabbitmqConsumer(deps.rabbitConnection, config.ConsumeConfig{})
+	guestConsumer, err := mq.NewRabbitmqConsumer(deps.rabbitConnection, deps.communicationConsumer.Consume)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +89,7 @@ func buildGuestJourney(deps guestJourneyFactoryDeps) (*journey.GuestJourney, err
 		lodgingFlow,
 		guestConsumer,
 		deps.redisCache,
+		deps.communicationConsumer,
 	)
 }
 
@@ -158,7 +160,7 @@ func main() {
 	exitOnError(ctx, "failed to init telemetry", err)
 	cleanup = append(cleanup, shutdownTelemetry)
 
-	rabbitmqInfra, err := infra.NewRabbitmq(ctx, configs.RabbitMqConfig)
+	rabbitmqInfra, err := infra.NewRabbitmq(ctx, configs.RabbitMqConnConfig, configs.RabbitMqConsumersConfig.HourChange)
 	exitOnError(ctx, "failed to init rabbitmq", err)
 	cleanup = append(cleanup, rabbitmqInfra.ConnectionClose)
 
@@ -191,6 +193,7 @@ func main() {
 			flowConfig:              configs.FlowsConfig,
 			servicesConfig:          configs.ServicesConfig,
 			rabbitConnection:        rabbitmqInfra.Connection,
+			communicationConsumer:   configs.RabbitMqConsumersConfig.Communication,
 			redisCache:              redisInfra.Client,
 			clock:                   clockInfra,
 			hourNotificationService: hourNotificationService,

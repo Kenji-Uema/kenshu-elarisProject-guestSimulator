@@ -193,7 +193,7 @@ func (c *Client) write(ctx context.Context, msg *lodging.ChatMessage) error {
 		carrier := propagation.MapCarrier{}
 		otel.GetTextMapPropagator().Inject(ctx, carrier)
 		if len(carrier) > 0 {
-			msg.TraceContext = map[string]string(carrier)
+			msg.TraceContext = carrier
 		} else {
 			msg.TraceContext = nil
 		}
