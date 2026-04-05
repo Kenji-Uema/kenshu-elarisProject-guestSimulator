@@ -71,7 +71,7 @@ func buildGuestJourney(deps guestJourneyFactoryDeps) (*journey.GuestJourney, err
 		return nil, err
 	}
 
-	lodgingFlow, err := flows.NewLodgingFlowWithState(state, deps.servicesConfig, deps.redisCache, deps.clock, deps.hourNotificationService)
+	lodgingFlow, err := flows.NewLodgingFlowWithState(state, deps.servicesConfig, deps.redisCache, deps.hourNotificationService)
 	if err != nil {
 		return nil, err
 	}
