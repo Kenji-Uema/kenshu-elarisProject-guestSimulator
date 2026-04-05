@@ -13,7 +13,6 @@ import (
 	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto/lodging"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
 	"github.com/Kenji-Uema/guestSimulator/internal/port"
-	ws "github.com/Kenji-Uema/guestSimulator/internal/transport/websocket"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -23,6 +22,7 @@ type RunLodgingStep struct {
 	state               *domain.State
 	chatURL             string
 	cache               port.Cache
+	chatClientFactory   port.LodgingChatClientFactory
 	notificationService hourNotificationService
 	flow                config.LodgingFlow
 }
@@ -38,11 +38,12 @@ type hourNotificationService interface {
 	CurrentTime() (time.Time, bool)
 }
 
-func NewRunLodgingStep(state *domain.State, chatURL string, cache port.Cache, notificationService hourNotificationService, flow config.LodgingFlow) steps.Step {
+func NewRunLodgingStep(state *domain.State, chatURL string, cache port.Cache, chatClientFactory port.LodgingChatClientFactory, notificationService hourNotificationService, flow config.LodgingFlow) steps.Step {
 	return &RunLodgingStep{
 		state:               state,
 		chatURL:             chatURL,
 		cache:               cache,
+		chatClientFactory:   chatClientFactory,
 		notificationService: notificationService,
 		flow:                flow,
 	}
@@ -58,6 +59,9 @@ func (s RunLodgingStep) Validate() error {
 	}
 	if s.cache == nil {
 		return fmt.Errorf("invalid guest journey cache")
+	}
+	if s.chatClientFactory == nil {
+		return fmt.Errorf("invalid lodging chat client factory")
 	}
 	if s.notificationService == nil {
 		return fmt.Errorf("invalid hour notification service")
@@ -86,7 +90,7 @@ func (s RunLodgingStep) Execute(ctx context.Context) error {
 		attribute.String("booking.cottage", cacheValue.Booking.SelectedCottage),
 	)
 
-	client, err := ws.NewClient(ctx, s.chatURL)
+	client, err := s.chatClientFactory.NewClient(ctx, s.chatURL)
 	if err != nil {
 		return err
 	}
@@ -168,7 +172,7 @@ func (s RunLodgingStep) expandPlan(dayOffset int, actions []config.LodgingPlanne
 	return plan
 }
 
-func (s RunLodgingStep) executeActionPlan(ctx context.Context, phase string, client *ws.Client, plan []actionPlanStep, cacheValue dto.GuestJourneyCacheValue) error {
+func (s RunLodgingStep) executeActionPlan(ctx context.Context, phase string, client port.LodgingChatClient, plan []actionPlanStep, cacheValue dto.GuestJourneyCacheValue) error {
 	slog.InfoContext(ctx, "executing action plan", "phase", phase, "plan_length", len(plan))
 	for _, step := range plan {
 		if _, err := s.waitForActionGate(ctx, client, step, cacheValue); err != nil {
@@ -200,7 +204,7 @@ func (s RunLodgingStep) executeActionPlan(ctx context.Context, phase string, cli
 	return nil
 }
 
-func (s RunLodgingStep) executeCheckoutPlan(ctx context.Context, client *ws.Client, keyID string, cacheValue dto.GuestJourneyCacheValue) error {
+func (s RunLodgingStep) executeCheckoutPlan(ctx context.Context, client port.LodgingChatClient, keyID string, cacheValue dto.GuestJourneyCacheValue) error {
 	for _, step := range s.buildCheckoutActionPlan(cacheValue) {
 		actionCtx, actionSpan := telemetry.Tracer.Start(ctx, "ExecuteCheckoutAction")
 		actionSpan.SetAttributes(
@@ -241,7 +245,7 @@ func (s RunLodgingStep) executeCheckoutPlan(ctx context.Context, client *ws.Clie
 	return nil
 }
 
-func (s RunLodgingStep) waitForActionGate(ctx context.Context, client *ws.Client, step actionPlanStep, cacheValue dto.GuestJourneyCacheValue) (*lodging.ChatMessage, error) {
+func (s RunLodgingStep) waitForActionGate(ctx context.Context, client port.LodgingChatClient, step actionPlanStep, cacheValue dto.GuestJourneyCacheValue) (*lodging.ChatMessage, error) {
 	ctx, span := telemetry.Tracer.Start(ctx, "WaitForActionGate")
 	defer span.End()
 
@@ -358,7 +362,7 @@ func sameUTCDay(left time.Time, right time.Time) bool {
 		left.Day() == right.Day()
 }
 
-func (s RunLodgingStep) finishCheckin(ctx context.Context, client *ws.Client, cacheValue dto.GuestJourneyCacheValue) error {
+func (s RunLodgingStep) finishCheckin(ctx context.Context, client port.LodgingChatClient, cacheValue dto.GuestJourneyCacheValue) error {
 	ctx, span := telemetry.Tracer.Start(ctx, "FinishCheckin")
 	defer span.End()
 
@@ -392,7 +396,7 @@ func (s RunLodgingStep) finishCheckin(ctx context.Context, client *ws.Client, ca
 	}
 }
 
-func (s RunLodgingStep) expectNotification(ctx context.Context, client *ws.Client, notification lodging.SystemNotification) error {
+func (s RunLodgingStep) expectNotification(ctx context.Context, client port.LodgingChatClient, notification lodging.SystemNotification) error {
 	ctx, span := telemetry.Tracer.Start(ctx, "WaitSystemNotification")
 	defer span.End()
 
@@ -412,7 +416,7 @@ func (s RunLodgingStep) expectNotification(ctx context.Context, client *ws.Clien
 	}
 }
 
-func (s RunLodgingStep) expectRequest(ctx context.Context, client *ws.Client, request lodging.SystemRequest) (*lodging.ChatMessage, error) {
+func (s RunLodgingStep) expectRequest(ctx context.Context, client port.LodgingChatClient, request lodging.SystemRequest) (*lodging.ChatMessage, error) {
 	ctx, span := telemetry.Tracer.Start(ctx, "WaitSystemRequest")
 	defer span.End()
 

@@ -8,8 +8,9 @@ import (
 	"sync"
 	"time"
 
-	lodging "github.com/Kenji-Uema/guestSimulator/internal/domain/dto/lodging"
+	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto/lodging"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"go.opentelemetry.io/otel"
@@ -18,6 +19,8 @@ import (
 )
 
 const protocolVersion = "lodging.v1"
+
+type ClientFactory struct{}
 
 type Client struct {
 	conn      *websocket.Conn
@@ -28,7 +31,7 @@ type Client struct {
 	pending   []*lodging.ChatMessage
 }
 
-func NewClient(ctx context.Context, url string) (*Client, error) {
+func (ClientFactory) NewClient(ctx context.Context, url string) (port.LodgingChatClient, error) {
 	ctx, span := telemetry.Tracer.Start(ctx, "NewLodgingClient")
 	defer span.End()
 

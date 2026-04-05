@@ -11,8 +11,9 @@ import (
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/clock"
+	"github.com/Kenji-Uema/guestSimulator/internal/infra/http"
+	"github.com/Kenji-Uema/guestSimulator/internal/infra/websocket"
 	"github.com/Kenji-Uema/guestSimulator/internal/port"
-	transporthttp "github.com/Kenji-Uema/guestSimulator/internal/transport/http"
 )
 
 type HourNotificationService interface {
@@ -20,15 +21,10 @@ type HourNotificationService interface {
 	CurrentTime() (time.Time, bool)
 }
 
-func NewLodgingMachine(machineConfig config.LodgingMachineConfig, serviceConfig config.ServicesConfig, cache port.Cache,
-	notificationService HourNotificationService) (*Machine, error) {
-	return NewLodgingMachineWithState(&domain.State{}, machineConfig, serviceConfig, cache, notificationService)
-}
-
 func NewLodgingMachineWithState(state *domain.State, machineConfig config.LodgingMachineConfig, serviceConfig config.ServicesConfig, cache port.Cache,
 	notificationService HourNotificationService) (*Machine, error) {
-	cottageClient := transporthttp.NewRestyClient(serviceConfig.CottageManagerUrl, serviceConfig.CottageManagerPort)
-	guestClient := transporthttp.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
+	cottageClient := http.NewRestyClient(serviceConfig.CottageManagerUrl, serviceConfig.CottageManagerPort)
+	guestClient := http.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
 	clockEmu, err := clock.NewClockEmu(serviceConfig)
 	if err != nil {
 		return nil, err
@@ -42,6 +38,7 @@ func NewLodgingMachineWithState(state *domain.State, machineConfig config.Lodgin
 		state,
 		fmt.Sprintf("ws://%s:%d/lodging/chat", serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort),
 		cache,
+		websocket.ClientFactory{},
 		notificationService,
 		config.DefaultLodgingFlow(),
 	)

@@ -12,8 +12,8 @@ import (
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/clock"
+	"github.com/Kenji-Uema/guestSimulator/internal/infra/http"
 	"github.com/Kenji-Uema/guestSimulator/internal/port"
-	"github.com/Kenji-Uema/guestSimulator/internal/transport/http"
 	"github.com/go-resty/resty/v2"
 )
 

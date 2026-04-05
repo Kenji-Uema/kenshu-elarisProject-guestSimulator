@@ -8,13 +8,13 @@ import (
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps/payment_step"
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
+	"github.com/Kenji-Uema/guestSimulator/internal/infra/http"
 	"github.com/Kenji-Uema/guestSimulator/internal/port"
-	transporthttp "github.com/Kenji-Uema/guestSimulator/internal/transport/http"
 )
 
 func NewPaymentMachineWithState(state *domain.State, machineConfig config.PaymentMachineConfig, serviceConfig config.ServicesConfig, cache port.Cache) (*Machine, error) {
-	guestClient := transporthttp.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
-	paymentClient := transporthttp.NewRestyClient(serviceConfig.PaymentSimulatorUrl, serviceConfig.PaymentSimulatorPort)
+	guestClient := http.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
+	paymentClient := http.NewRestyClient(serviceConfig.PaymentSimulatorUrl, serviceConfig.PaymentSimulatorPort)
 
 	waitForInvoiceStep := payment_step.NewWaitForInvoiceStep(state, guestClient, paymentClient, cache)
 	payInvoiceStep := payment_step.NewPayInvoiceStep(state, guestClient, paymentClient, cache)

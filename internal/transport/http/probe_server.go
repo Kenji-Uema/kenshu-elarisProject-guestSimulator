@@ -9,14 +9,15 @@ import (
 	"time"
 
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
+	infrahttp "github.com/Kenji-Uema/guestSimulator/internal/infra/http"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/mq"
 	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
 	"github.com/Kenji-Uema/guestSimulator/internal/transport/http/probe"
 )
 
 func StartHTTPServer(probeConfig config.ProbeConfig, serviceConfig config.ServicesConfig, rabbitMqClient *mq.RabbitMqConnection, redisClient *redisc.Redis) *http.Server {
-	cottageClient := NewRestyClient(serviceConfig.CottageManagerUrl, serviceConfig.CottageManagerPort)
-	guestClient := NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
+	cottageClient := infrahttp.NewRestyClient(serviceConfig.CottageManagerUrl, serviceConfig.CottageManagerPort)
+	guestClient := infrahttp.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", probe.HealthHandler())
