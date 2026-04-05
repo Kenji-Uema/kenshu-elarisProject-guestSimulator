@@ -8,6 +8,7 @@ import (
 
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
+	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto/booking"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
 	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/go-resty/resty/v2"
@@ -50,18 +51,18 @@ func (s BookLodgingStep) Execute(ctx context.Context) error {
 		return err
 	}
 	if cacheValue.Booking == nil || cacheValue.Booking.SelectedCottage == "" || cacheValue.Booking.SelectedPeriod == nil {
-		return fmt.Errorf("invalid cached booking context")
+		return fmt.Errorf("invalid cached bookingConfirmation context")
 	}
 
 	resp, err := s.client.R().
 		SetContext(ctx).
-		SetBody(domain.BookingRequest{
+		SetBody(booking.BookingRequest{
 			GuestId:        s.state.GuestId,
 			NumberOfGuests: 1,
 			CheckInDate:    cacheValue.Booking.SelectedPeriod.Start.Format("2006-01-02"),
 			CheckOutDate:   cacheValue.Booking.SelectedPeriod.End.Format("2006-01-02"),
 		}).
-		Post(fmt.Sprintf("/cottage/%s/booking", cacheValue.Booking.SelectedCottage))
+		Post(fmt.Sprintf("/cottage/%s/bookingConfirmation", cacheValue.Booking.SelectedCottage))
 	if err != nil {
 		return err
 	}
@@ -69,16 +70,16 @@ func (s BookLodgingStep) Execute(ctx context.Context) error {
 		return fmt.Errorf("error: %s", resp.Status())
 	}
 
-	var booking domain.BookingConfirmation
-	if err := json.Unmarshal(resp.Body(), &booking); err != nil {
+	var bookingConfirmation booking.BookingConfirmation
+	if err := json.Unmarshal(resp.Body(), &bookingConfirmation); err != nil {
 		return err
 	}
 
-	cacheValue.Booking.BookingID = booking.Id
+	cacheValue.Booking.BookingID = bookingConfirmation.Id
 	if err := s.cache.Save(ctx, s.state, cacheValue); err != nil {
 		return err
 	}
-	slog.InfoContext(ctx, "state updated with lodging booking id", "bookingId", booking.Id)
+	slog.InfoContext(ctx, "state updated with lodging bookingConfirmation id", "bookingId", bookingConfirmation.Id)
 
 	return nil
 }

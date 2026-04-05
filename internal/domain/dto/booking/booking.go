@@ -1,4 +1,4 @@
-package domain
+package booking
 
 type BookingRequest struct {
 	GuestId        string `json:"mainGuest"`

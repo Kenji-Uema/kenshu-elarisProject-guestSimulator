@@ -10,6 +10,7 @@ import (
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto"
+	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto/booking"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
 	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/go-resty/resty/v2"
@@ -75,7 +76,7 @@ func (s PrepareLodgingStep) Execute(ctx context.Context) error {
 			cacheValue.Booking = &dto.GuestJourneyBooking{}
 		}
 		cacheValue.Booking.SelectedCottage = cottageName
-		cacheValue.Booking.SelectedPeriod = &domain.Period{
+		cacheValue.Booking.SelectedPeriod = &booking.Period{
 			Start: checkIn,
 			End:   checkOut,
 		}
@@ -124,7 +125,7 @@ func (s PrepareLodgingStep) isAvailableForLodging(ctx context.Context, cottageNa
 		return false, fmt.Errorf("error: %s", resp.Status())
 	}
 
-	var availablePeriodDTO domain.AvailablePeriodDTO
+	var availablePeriodDTO booking.AvailablePeriodDTO
 	if err := json.Unmarshal(resp.Body(), &availablePeriodDTO); err != nil {
 		return false, err
 	}

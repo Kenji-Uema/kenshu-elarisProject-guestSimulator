@@ -12,6 +12,7 @@ import (
 
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
+	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto/booking"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
 	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/go-resty/resty/v2"
@@ -31,7 +32,7 @@ type SelectPeriodStep struct {
 
 type stayCandidate struct {
 	cottageName string
-	period      *domain.Period
+	period      *booking.Period
 	distance    time.Duration
 	nights      int
 }
@@ -100,7 +101,7 @@ func (s SelectPeriodStep) Execute(ctx context.Context) error {
 	return ErrNoSuitablePeriod
 }
 
-func (s SelectPeriodStep) selectNearestStay(ctx context.Context, now time.Time, windowDays int, nightOptions []int) (string, *domain.Period, bool, error) {
+func (s SelectPeriodStep) selectNearestStay(ctx context.Context, now time.Time, windowDays int, nightOptions []int) (string, *booking.Period, bool, error) {
 	candidates := make([]stayCandidate, 0, len(s.state.CottageNames))
 
 	for _, cottageName := range s.state.CottageNames {
@@ -111,7 +112,7 @@ func (s SelectPeriodStep) selectNearestStay(ctx context.Context, now time.Time, 
 
 		for _, nights := range nightOptions {
 			selectedPeriod, ok := pickNearestSuitablePeriod(now, availablePeriods, nights)
-			if !ok {
+			if !ok || selectedPeriod == nil {
 				continue
 			}
 
@@ -164,7 +165,7 @@ func (s SelectPeriodStep) pickCandidateIndex(candidates []stayCandidate) int {
 	return int(hasher.Sum32() % uint32(topN))
 }
 
-func (s SelectPeriodStep) loadAvailablePeriods(ctx context.Context, cottageName string, now time.Time, windowDays int) ([]domain.Period, error) {
+func (s SelectPeriodStep) loadAvailablePeriods(ctx context.Context, cottageName string, now time.Time, windowDays int) ([]booking.Period, error) {
 	from := now
 	to := now.AddDate(0, 0, windowDays)
 
@@ -180,7 +181,7 @@ func (s SelectPeriodStep) loadAvailablePeriods(ctx context.Context, cottageName 
 		return nil, fmt.Errorf("error: %s", resp.Status())
 	}
 
-	var availablePeriodDTO domain.AvailablePeriodDTO
+	var availablePeriodDTO booking.AvailablePeriodDTO
 	if err := json.Unmarshal(resp.Body(), &availablePeriodDTO); err != nil {
 		return nil, err
 	}
@@ -188,8 +189,8 @@ func (s SelectPeriodStep) loadAvailablePeriods(ctx context.Context, cottageName 
 	return availablePeriodDTO.ToPeriods(), nil
 }
 
-func pickNearestSuitablePeriod(now time.Time, availablePeriods []domain.Period, nights int) (*domain.Period, bool) {
-	var selected *domain.Period
+func pickNearestSuitablePeriod(now time.Time, availablePeriods []booking.Period, nights int) (*booking.Period, bool) {
+	var selected *booking.Period
 	var selectedDistance time.Duration
 
 	searchStart := startOfUTCDay(now).AddDate(0, 0, 1)
@@ -208,7 +209,7 @@ func pickNearestSuitablePeriod(now time.Time, availablePeriods []domain.Period, 
 
 		distance := candidateStart.Sub(searchStart)
 		if selected == nil || distance < selectedDistance {
-			candidate := domain.Period{
+			candidate := booking.Period{
 				Start: candidateStart,
 				End:   candidateEnd,
 			}

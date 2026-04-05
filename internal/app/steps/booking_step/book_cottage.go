@@ -8,6 +8,7 @@ import (
 
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
+	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto/booking"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
 	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/go-resty/resty/v2"
@@ -63,7 +64,7 @@ func (s BookCottageStep) Execute(ctx context.Context) error {
 
 	resp, err := s.client.R().
 		SetContext(ctx).
-		SetBody(domain.BookingRequest{
+		SetBody(booking.BookingRequest{
 			GuestId:        s.state.GuestId,
 			NumberOfGuests: 1,
 			CheckInDate:    selected.SelectedPeriod.Start.Format("2006-01-02"),
@@ -83,7 +84,7 @@ func (s BookCottageStep) Execute(ctx context.Context) error {
 		return fmt.Errorf("error: %s", resp.Status())
 	}
 
-	var bookingConfirmation domain.BookingConfirmation
+	var bookingConfirmation booking.BookingConfirmation
 	if err := json.Unmarshal(resp.Body(), &bookingConfirmation); err != nil {
 		return err
 	}

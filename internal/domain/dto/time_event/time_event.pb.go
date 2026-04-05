@@ -4,7 +4,7 @@
 // 	protoc        (unknown)
 // source: event/time_event.proto
 
-package timeevent
+package time_event
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -73,7 +73,7 @@ const file_event_time_event_proto_rawDesc = "" +
 	"\n" +
 	"\x16event/time_event.proto\x12\x05event\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\";\n" +
 	"\tTimeEvent\x12.\n" +
-	"\x04time\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04timeBOZMgithub.com/Kenji-Uema/guestSimulator/internal/domain/dto/time_event;timeeventb\x06proto3"
+	"\x04time\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04timeBPZNgithub.com/Kenji-Uema/guestSimulator/internal/domain/dto/time_event;time_eventb\x06proto3"
 
 var (
 	file_event_time_event_proto_rawDescOnce sync.Once

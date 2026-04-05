@@ -1,4 +1,4 @@
-package domain
+package guest_registration
 
 type Guest struct {
 	DocumentId     string `json:"document_id"`

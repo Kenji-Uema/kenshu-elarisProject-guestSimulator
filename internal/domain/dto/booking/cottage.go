@@ -1,4 +1,4 @@
-package domain
+package booking
 
 type Cottage struct {
 	Name          string         `json:"name"`

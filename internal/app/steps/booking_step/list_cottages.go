@@ -8,6 +8,7 @@ import (
 
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
+	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto/booking"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
 	"github.com/go-resty/resty/v2"
 )
@@ -50,7 +51,7 @@ func (s ListCottagesStep) Execute(ctx context.Context) error {
 		return fmt.Errorf("error: %s", resp.Status())
 	}
 
-	var cottages []domain.Cottage
+	var cottages []booking.Cottage
 	if err := json.Unmarshal(resp.Body(), &cottages); err != nil {
 		return err
 	}
