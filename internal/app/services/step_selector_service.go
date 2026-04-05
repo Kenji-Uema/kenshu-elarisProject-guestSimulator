@@ -1,14 +1,10 @@
-package utils
+package services
 
 import (
 	"math/rand"
 
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 )
-
-func PickRandom[T any](list []T) T {
-	return list[rand.Intn(len(list))]
-}
 
 func PickRandomWeighted[T any](list []domain.WeightedTuple[T]) T {
 	total := 0.0

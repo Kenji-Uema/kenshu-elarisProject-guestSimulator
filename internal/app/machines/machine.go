@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/Kenji-Uema/guestSimulator/internal/app/services"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
-	"github.com/Kenji-Uema/guestSimulator/internal/app/utils"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
 )
@@ -64,7 +64,7 @@ func runStepGraph(ctx context.Context, spanName string, zeroStep steps.Step, fir
 			if nextStep == nil {
 				return nil
 			} else {
-				nextStep := utils.PickRandomWeighted(nextStep)
+				nextStep := services.PickRandomWeighted(nextStep)
 				slog.InfoContext(machineCtx, "transitioning to state", "oldStep", step.Name(), "newStep", nextStep.Name())
 				step = nextStep
 			}
