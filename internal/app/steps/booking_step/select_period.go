@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"log/slog"
 	"sort"
 	"time"
@@ -20,6 +19,8 @@ import (
 
 var numberOfNights = []int{3, 5, 7, 10, 14}
 var searchWindows = []int{3, 5, 7, 10, 14, 21, 30}
+
+const maxPeriodAttempts = 5
 
 var ErrNoSuitablePeriod = errors.New("no suitable period found")
 
@@ -81,53 +82,58 @@ func (s SelectPeriodStep) Execute(ctx context.Context) error {
 	nightOptions := append([]int(nil), numberOfNights...)
 	sort.Ints(nightOptions)
 
-	for _, windowDays := range searchWindows {
-		selectedCottage, selectedPeriod, ok, err := s.selectNearestStay(ctx, *now, windowDays, nightOptions)
-		if err != nil {
-			return err
-		}
-		if ok {
-			cacheValue.Booking.SelectedCottage = selectedCottage
-			cacheValue.Booking.SelectedPeriod = selectedPeriod
-			if err := s.cache.Save(ctx, s.state, cacheValue); err != nil {
-				return err
-			}
-			slog.InfoContext(ctx, "state updated, stay period selected", "selectedCottage", selectedCottage, "selectedPeriod", selectedPeriod)
-			return nil
-		}
+	candidates, err := s.collectStayCandidates(ctx, *now, nightOptions)
+	if err != nil {
+		return err
 	}
 
-	slog.WarnContext(ctx, "No suitable period found")
-	return ErrNoSuitablePeriod
+	if len(candidates) == 0 {
+		slog.WarnContext(ctx, "No suitable period found")
+		return ErrNoSuitablePeriod
+	}
+
+	if len(candidates) > maxPeriodAttempts {
+		candidates = candidates[:maxPeriodAttempts]
+	}
+
+	selected := candidates[0]
+	cacheValue.Booking.SelectedCottage = selected.cottageName
+	cacheValue.Booking.SelectedPeriod = selected.period
+	if err := s.cache.Save(ctx, s.state, cacheValue); err != nil {
+		return err
+	}
+	slog.InfoContext(ctx, "state updated, stay period selected", "selectedCottage", selected.cottageName, "selectedPeriod", selected.period, "candidateAttempts", len(candidates))
+	return nil
 }
 
-func (s SelectPeriodStep) selectNearestStay(ctx context.Context, now time.Time, windowDays int, nightOptions []int) (string, *booking.Period, bool, error) {
+func (s SelectPeriodStep) collectStayCandidates(ctx context.Context, now time.Time, nightOptions []int) ([]stayCandidate, error) {
 	candidates := make([]stayCandidate, 0, len(s.state.CottageNames))
-
 	for _, cottageName := range s.state.CottageNames {
-		availablePeriods, err := s.loadAvailablePeriods(ctx, cottageName, now, windowDays)
-		if err != nil {
-			return "", nil, false, err
-		}
-
-		for _, nights := range nightOptions {
-			selectedPeriod, ok := pickNearestSuitablePeriod(now, availablePeriods, nights)
-			if !ok || selectedPeriod == nil {
-				continue
+		for _, windowDays := range searchWindows {
+			availablePeriods, err := s.loadAvailablePeriods(ctx, cottageName, now, windowDays)
+			if err != nil {
+				return nil, err
 			}
 
-			candidates = append(candidates, stayCandidate{
-				cottageName: cottageName,
-				period:      selectedPeriod,
-				distance:    selectedPeriod.Start.Sub(now),
-				nights:      nights,
-			})
-			break
+			for _, nights := range nightOptions {
+				selectedPeriod, ok := pickNearestSuitablePeriod(now, availablePeriods, nights)
+				if !ok || selectedPeriod == nil {
+					continue
+				}
+
+				candidates = append(candidates, stayCandidate{
+					cottageName: cottageName,
+					period:      selectedPeriod,
+					distance:    selectedPeriod.Start.Sub(now),
+					nights:      nights,
+				})
+				break
+			}
 		}
 	}
 
 	if len(candidates) == 0 {
-		return "", nil, false, nil
+		return nil, nil
 	}
 
 	sort.SliceStable(candidates, func(i, j int) bool {
@@ -143,26 +149,7 @@ func (s SelectPeriodStep) selectNearestStay(ctx context.Context, now time.Time, 
 		return candidates[i].cottageName < candidates[j].cottageName
 	})
 
-	selected := candidates[s.pickCandidateIndex(candidates)]
-	return selected.cottageName, selected.period, true, nil
-}
-
-func (s SelectPeriodStep) pickCandidateIndex(candidates []stayCandidate) int {
-	if len(candidates) == 0 {
-		return 0
-	}
-
-	topN := len(candidates)
-	if topN > 5 {
-		topN = 5
-	}
-	if topN == 1 {
-		return 0
-	}
-
-	hasher := fnv.New32a()
-	_, _ = hasher.Write([]byte(s.state.GuestId))
-	return int(hasher.Sum32() % uint32(topN))
+	return uniqueStayCandidates(candidates), nil
 }
 
 func (s SelectPeriodStep) loadAvailablePeriods(ctx context.Context, cottageName string, now time.Time, windowDays int) ([]booking.Period, error) {
@@ -223,4 +210,20 @@ func pickNearestSuitablePeriod(now time.Time, availablePeriods []booking.Period,
 
 func startOfUTCDay(t time.Time) time.Time {
 	return time.Date(t.UTC().Year(), t.UTC().Month(), t.UTC().Day(), 0, 0, 0, 0, time.UTC)
+}
+
+func uniqueStayCandidates(candidates []stayCandidate) []stayCandidate {
+	unique := make([]stayCandidate, 0, len(candidates))
+	seen := make(map[string]struct{}, len(candidates))
+
+	for _, candidate := range candidates {
+		key := fmt.Sprintf("%s|%s|%s", candidate.cottageName, candidate.period.Start.UTC().Format(time.RFC3339), candidate.period.End.UTC().Format(time.RFC3339))
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		unique = append(unique, candidate)
+	}
+
+	return unique
 }

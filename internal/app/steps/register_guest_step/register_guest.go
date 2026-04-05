@@ -7,7 +7,6 @@ import (
 	"log/slog"
 
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
-	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
 	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/go-resty/resty/v2"
@@ -29,15 +28,14 @@ func (s RegisterGuestStep) Name() string {
 }
 
 func (s RegisterGuestStep) Validate() error {
+	if s.client == nil {
+		return fmt.Errorf("invalid guest client")
+	}
 	if s.state == nil {
 		return fmt.Errorf("invalid state, state is nil")
 	}
 	if s.cache == nil {
 		return fmt.Errorf("invalid guest journey cache")
-	}
-
-	if s.state.Guest == nil {
-		return fmt.Errorf("invalid state, guest is nil")
 	}
 
 	return nil
@@ -47,7 +45,16 @@ func (s RegisterGuestStep) Execute(ctx context.Context) error {
 	ctx, span := telemetry.Tracer.Start(ctx, "RegisterGuestStep")
 	defer span.End()
 
-	guest := s.state.Guest
+	cacheValue, err := s.cache.Load(ctx, s.state)
+	if err != nil {
+		return err
+	}
+	if cacheValue.PersonalInfo == nil {
+		return fmt.Errorf("invalid cached guest context")
+	}
+
+	guest := cacheValue.PersonalInfo
+	s.state.Guest = guest
 	slog.InfoContext(ctx, "User registers its own account", "guest.Email", guest.Email)
 
 	resp, err := s.client.R().
@@ -71,13 +78,9 @@ func (s RegisterGuestStep) Execute(ctx context.Context) error {
 	span.SetAttributes(attribute.String("guest.ID", guestId))
 
 	s.state.GuestId = guestId
-	if _, err := s.cache.EnsureKey(s.state); err != nil {
-		return err
-	}
-	if err := s.cache.Save(ctx, s.state, dto.GuestJourneyCacheValue{
-		GuestID:      guestId,
-		PersonalInfo: guest,
-	}); err != nil {
+	cacheValue.GuestID = guestId
+	cacheValue.PersonalInfo = guest
+	if err := s.cache.Save(ctx, s.state, cacheValue); err != nil {
 		return err
 	}
 	slog.InfoContext(ctx, "state updated with guestId", "guestId", guestId)

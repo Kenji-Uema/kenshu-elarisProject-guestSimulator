@@ -18,7 +18,3 @@ type RabbitConsumer interface {
 	Consume(ctx context.Context) (<-chan amqp.Delivery, error)
 	CloseChannel() error
 }
-
-type RabbitConsumerFactory interface {
-	NewConsumer(connection RabbitConnection, consumeConfig config.ConsumeConfig) (RabbitConsumer, error)
-}

@@ -9,16 +9,18 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Kenji-Uema/guestSimulator/internal/app"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/flows"
+	"github.com/Kenji-Uema/guestSimulator/internal/app/journey"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/services"
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra"
+	"github.com/Kenji-Uema/guestSimulator/internal/infra/clock"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/log"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/mq"
 	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/Kenji-Uema/guestSimulator/internal/transport/http"
 )
 
@@ -29,6 +31,7 @@ type guestJourneyFactoryDeps struct {
 	servicesConfig          config.ServicesConfig
 	rabbitConnection        *mq.RabbitMqConnection
 	redisCache              *redisc.Cache
+	clock                   port.Clock
 	hourNotificationService services.HourNotificationService
 }
 
@@ -49,55 +52,59 @@ func runCleanup(ctx context.Context, cleanup []func(context.Context) error) erro
 	return shutdownErr
 }
 
-func buildGuestJourney(deps guestJourneyFactoryDeps) (*app.GuestJourney, error) {
+func buildGuestJourney(deps guestJourneyFactoryDeps) (*journey.GuestJourney, error) {
 	state := &domain.State{}
 
-	guestRegisterFlow, err := flows.NewGuestRegisterFlowWithState(state, deps.flowConfig.GuestRegister, deps.servicesConfig, deps.redisCache)
+	guestRegisterFlow, err := flows.NewGuestRegisterFlowWithState(state, deps.servicesConfig, deps.redisCache)
 	if err != nil {
 		return nil, err
 	}
 
-	bookingFlow, err := flows.NewBookingFlowWithState(state, deps.flowConfig.Booking, deps.servicesConfig, deps.redisCache)
+	bookingFlow, err := flows.NewBookingFlow(state, deps.servicesConfig, deps.redisCache, deps.clock)
 	if err != nil {
 		return nil, err
 	}
 
-	paymentFlow, err := flows.NewPaymentFlowWithState(state, deps.flowConfig.Payment, deps.servicesConfig, deps.redisCache)
+	paymentFlow, err := flows.NewPaymentFlowWithState(state, deps.servicesConfig, deps.redisCache)
 	if err != nil {
 		return nil, err
 	}
 
-	lodgingFlow, err := flows.NewLodgingFlowWithState(state, deps.flowConfig.Lodging, deps.servicesConfig, deps.redisCache, deps.hourNotificationService)
+	lodgingFlow, err := flows.NewLodgingFlowWithState(state, deps.servicesConfig, deps.redisCache, deps.clock, deps.hourNotificationService)
 	if err != nil {
 		return nil, err
 	}
 
-	return app.NewGuestJourney(
-		deps.flowConfig.GuestJourney,
+	guestConsumer, err := mq.NewRabbitmqConsumer(deps.rabbitConnection, config.ConsumeConfig{})
+	if err != nil {
+		return nil, err
+	}
+
+	return journey.NewGuestJourney(
 		state,
 		guestRegisterFlow,
 		bookingFlow,
 		paymentFlow,
 		lodgingFlow,
-		deps.rabbitConnection,
+		guestConsumer,
 		deps.redisCache,
 	)
 }
 
-func runJourneys(ctx context.Context, concurrencyLevel int, factory func() (*app.GuestJourney, error)) {
+func runJourneys(ctx context.Context, concurrencyLevel int, factory func() (*journey.GuestJourney, error)) {
 	finishNotification := make(chan struct{}, concurrencyLevel)
 
 	startJourney := func() {
 		go func() {
-			journey, err := factory()
+			guestJourney, err := factory()
 			if err != nil {
-				slog.ErrorContext(ctx, "failed to create guest journey flow", "err", err)
+				slog.ErrorContext(ctx, "failed to create guest guestJourney flow", "err", err)
 				finishNotification <- struct{}{}
 				return
 			}
 
-			if err := journey.Start(ctx); err != nil {
-				slog.ErrorContext(ctx, "guest journey stopped with error", "err", err)
+			if err := guestJourney.Start(ctx); err != nil {
+				slog.ErrorContext(ctx, "guest guestJourney stopped with error", "err", err)
 			}
 
 			finishNotification <- struct{}{}
@@ -161,6 +168,12 @@ func main() {
 		return redisInfra.Close()
 	})
 
+	clockInfra, err := clock.NewClock(configs.ServicesConfig)
+	exitOnError(ctx, "failed to init clock", err)
+	cleanup = append(cleanup, func(context.Context) error {
+		return clockInfra.Close()
+	})
+
 	probeServer := http.StartHTTPServer(configs.ProbeConfig, configs.ServicesConfig, rabbitmqInfra.Connection, redisInfra.Raw)
 	cleanup = append(cleanup, func(context.Context) error {
 		http.ShutDownHTTPServer(probeServer)
@@ -173,12 +186,13 @@ func main() {
 	hourNotificationService := services.NewHourNotificationService(timeEventService)
 
 	started = true
-	runJourneys(ctx, configs.FlowsConfig.GuestJourney.ConcurrencyLevel, func() (*app.GuestJourney, error) {
+	runJourneys(ctx, configs.FlowsConfig.GuestJourney.ConcurrencyLevel, func() (*journey.GuestJourney, error) {
 		return buildGuestJourney(guestJourneyFactoryDeps{
 			flowConfig:              configs.FlowsConfig,
 			servicesConfig:          configs.ServicesConfig,
 			rabbitConnection:        rabbitmqInfra.Connection,
 			redisCache:              redisInfra.Client,
+			clock:                   clockInfra,
 			hourNotificationService: hourNotificationService,
 		})
 	})

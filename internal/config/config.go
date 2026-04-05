@@ -69,30 +69,25 @@ type FlowsConfig struct {
 }
 
 type BookingFlowConfig struct {
-	GraphFile                 string `env:"BOOKING_FLOW_GRAPH_FILE" envDefault:"docs/booking_mdp.dot"`
-	ConcurrencyLevel          int    `env:"BOOKING_FLOW_CONCURRENCY_LEVEL,required"`
-	TimeBetweenStepsInSeconds int    `env:"BOOKING_FLOW_TIME_BETWEEN_STEPS_IN_SECONDS,required"`
+	GraphFile        string `env:"BOOKING_FLOW_GRAPH_FILE" envDefault:"docs/booking_mdp.dot"`
+	ConcurrencyLevel int    `env:"BOOKING_FLOW_CONCURRENCY_LEVEL,required"`
 }
 
 type LodgingFlowConfig struct {
-	ConcurrencyLevel          int `env:"LODGING_FLOW_CONCURRENCY_LEVEL,required"`
-	TimeBetweenStepsInSeconds int `env:"LODGING_FLOW_TIME_BETWEEN_STEPS_IN_SECONDS,required"`
+	ConcurrencyLevel int `env:"LODGING_FLOW_CONCURRENCY_LEVEL,required"`
 }
 
 type PaymentFlowConfig struct {
-	ConcurrencyLevel          int `env:"PAYMENT_FLOW_CONCURRENCY_LEVEL,required"`
-	TimeBetweenStepsInSeconds int `env:"PAYMENT_FLOW_TIME_BETWEEN_STEPS_IN_SECONDS,required"`
+	ConcurrencyLevel int `env:"PAYMENT_FLOW_CONCURRENCY_LEVEL,required"`
 }
 
 type GuestRegisterFlowConfig struct {
-	GraphFile                 string `env:"GUEST_REGISTER_GRAPH_FILE" envDefault:"docs/guest_register_mdp.dot"`
-	ConcurrencyLevel          int    `env:"GUEST_REGISTER_FLOW_CONCURRENCY_LEVEL,required"`
-	TimeBetweenStepsInSeconds int    `env:"GUEST_REGISTER_TIME_BETWEEN_STEPS_IN_SECONDS,required"`
+	GraphFile        string `env:"GUEST_REGISTER_GRAPH_FILE" envDefault:"docs/guest_register_mdp.dot"`
+	ConcurrencyLevel int    `env:"GUEST_REGISTER_FLOW_CONCURRENCY_LEVEL,required"`
 }
 
 type GuestJourneyFlowConfig struct {
-	ConcurrencyLevel          int `env:"GUEST_JOURNEY_FLOW_CONCURRENCY_LEVEL,required"`
-	TimeBetweenStepsInSeconds int `env:"GUEST_JOURNEY_TIME_BETWEEN_STEPS_IN_SECONDS,required"`
+	ConcurrencyLevel int `env:"GUEST_JOURNEY_FLOW_CONCURRENCY_LEVEL,required"`
 }
 
 type TelemetryConfig struct {

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/Kenji-Uema/guestSimulator/internal/app/services"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
@@ -23,7 +24,7 @@ type RunLodgingStep struct {
 	chatURL             string
 	cache               port.Cache
 	chatClientFactory   port.LodgingChatClientFactory
-	notificationService hourNotificationService
+	notificationService services.HourNotificationService
 	flow                config.LodgingFlow
 }
 
@@ -33,12 +34,7 @@ type actionPlanStep struct {
 	gate      config.LodgingActionGate
 }
 
-type hourNotificationService interface {
-	HourNotification(ctx context.Context, timerCh chan interface{}, hour int)
-	CurrentTime() (time.Time, bool)
-}
-
-func NewRunLodgingStep(state *domain.State, chatURL string, cache port.Cache, chatClientFactory port.LodgingChatClientFactory, notificationService hourNotificationService, flow config.LodgingFlow) steps.Step {
+func NewRunLodgingStep(state *domain.State, chatURL string, cache port.Cache, chatClientFactory port.LodgingChatClientFactory, notificationService services.HourNotificationService, flow config.LodgingFlow) steps.Step {
 	return &RunLodgingStep{
 		state:               state,
 		chatURL:             chatURL,

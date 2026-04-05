@@ -19,7 +19,7 @@ type Clock struct {
 	client ClockServiceClient
 }
 
-func NewClockEmu(cfg config.ServicesConfig) (port.Clock, error) {
+func NewClock(cfg config.ServicesConfig) (port.Clock, error) {
 	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", cfg.ClockEmuGrpcUrl, cfg.ClockEmuGrpcPort),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()))

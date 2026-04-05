@@ -5,11 +5,8 @@ import (
 	"fmt"
 
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
-	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
-
-type ConsumerFactory struct{}
 
 type RabbitmqConsumer struct {
 	*RabbitMqChannel
@@ -27,15 +24,6 @@ func NewRabbitmqConsumer(rabbitMqConnection *RabbitMqConnection, consumeConfig c
 	}
 
 	return consumer, nil
-}
-
-func (ConsumerFactory) NewConsumer(connection port.RabbitConnection, consumeConfig config.ConsumeConfig) (port.RabbitConsumer, error) {
-	rabbitConnection, ok := connection.(*RabbitMqConnection)
-	if !ok {
-		return nil, fmt.Errorf("invalid rabbitmq connection implementation %T", connection)
-	}
-
-	return NewRabbitmqConsumer(rabbitConnection, consumeConfig)
 }
 
 func (c *RabbitmqConsumer) DeclareQueue(ctx context.Context, cfg config.QueueConfig) error {
