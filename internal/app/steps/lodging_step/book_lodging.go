@@ -6,22 +6,21 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/Kenji-Uema/guestSimulator/internal/app/journeyctx"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
-	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/go-resty/resty/v2"
 )
 
 type BookLodgingStep struct {
 	client *resty.Client
 	state  *domain.State
-	redis  *redisc.Redis
+	cache  port.Cache
 }
 
-func NewBookLodgingStep(state *domain.State, client *resty.Client, redis *redisc.Redis) steps.Step {
-	return &BookLodgingStep{client: client, state: state, redis: redis}
+func NewBookLodgingStep(state *domain.State, client *resty.Client, cache port.Cache) steps.Step {
+	return &BookLodgingStep{client: client, state: state, cache: cache}
 }
 
 func (s BookLodgingStep) Name() string {
@@ -35,8 +34,8 @@ func (s BookLodgingStep) Validate() error {
 	if s.state.GuestId == "" {
 		return fmt.Errorf("invalid state, guestId is empty")
 	}
-	if s.redis == nil {
-		return fmt.Errorf("invalid redis client")
+	if s.cache == nil {
+		return fmt.Errorf("invalid guest journey cache")
 	}
 
 	return nil
@@ -46,7 +45,7 @@ func (s BookLodgingStep) Execute(ctx context.Context) error {
 	ctx, span := telemetry.Tracer.Start(ctx, "BookLodgingStep")
 	defer span.End()
 
-	cacheValue, err := journeyctx.Load(ctx, s.redis, s.state)
+	cacheValue, err := s.cache.Load(ctx, s.state)
 	if err != nil {
 		return err
 	}
@@ -76,7 +75,7 @@ func (s BookLodgingStep) Execute(ctx context.Context) error {
 	}
 
 	cacheValue.Booking.BookingID = booking.Id
-	if err := journeyctx.Save(ctx, s.redis, s.state, cacheValue); err != nil {
+	if err := s.cache.Save(ctx, s.state, cacheValue); err != nil {
 		return err
 	}
 	slog.InfoContext(ctx, "state updated with lodging booking id", "bookingId", booking.Id)

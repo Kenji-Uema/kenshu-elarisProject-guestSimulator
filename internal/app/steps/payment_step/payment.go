@@ -8,12 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Kenji-Uema/guestSimulator/internal/app/journeyctx"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto"
-	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -27,7 +26,7 @@ const (
 type paymentRuntime struct {
 	guestClient   *resty.Client
 	paymentClient *resty.Client
-	redis         *redisc.Redis
+	cache         port.Cache
 	state         *domain.State
 }
 
@@ -35,9 +34,9 @@ type WaitForInvoiceStep struct {
 	paymentRuntime
 }
 
-func NewWaitForInvoiceStep(state *domain.State, guestClient *resty.Client, paymentClient *resty.Client, redis *redisc.Redis) steps.Step {
+func NewWaitForInvoiceStep(state *domain.State, guestClient *resty.Client, paymentClient *resty.Client, cache port.Cache) steps.Step {
 	return &WaitForInvoiceStep{
-		paymentRuntime: newPaymentRuntime(state, guestClient, paymentClient, redis),
+		paymentRuntime: newPaymentRuntime(state, guestClient, paymentClient, cache),
 	}
 }
 
@@ -63,7 +62,7 @@ func (s WaitForInvoiceStep) Execute(ctx context.Context) error {
 				cacheValue.Invoice = &dto.GuestJourneyInvoice{}
 			}
 			cacheValue.Invoice.InvoiceNumber = invoiceNumber
-			if err := journeyctx.Save(ctx, s.redis, s.state, cacheValue); err != nil {
+			if err := s.cache.Save(ctx, s.state, cacheValue); err != nil {
 				return err
 			}
 			slog.InfoContext(ctx, "invoice available for booking", "bookingId", cacheValue.Booking.BookingID, "invoiceNumber", invoiceNumber)
@@ -86,9 +85,9 @@ type PayInvoiceStep struct {
 	paymentRuntime
 }
 
-func NewPayInvoiceStep(state *domain.State, guestClient *resty.Client, paymentClient *resty.Client, redis *redisc.Redis) steps.Step {
+func NewPayInvoiceStep(state *domain.State, guestClient *resty.Client, paymentClient *resty.Client, cache port.Cache) steps.Step {
 	return &PayInvoiceStep{
-		paymentRuntime: newPaymentRuntime(state, guestClient, paymentClient, redis),
+		paymentRuntime: newPaymentRuntime(state, guestClient, paymentClient, cache),
 	}
 }
 
@@ -139,7 +138,7 @@ func (s PayInvoiceStep) Execute(ctx context.Context) error {
 	}
 
 	cacheValue.Invoice.ReceiptNumber = paymentResp.ReceiptNumber
-	if err := journeyctx.Save(ctx, s.redis, s.state, cacheValue); err != nil {
+	if err := s.cache.Save(ctx, s.state, cacheValue); err != nil {
 		return err
 	}
 	slog.InfoContext(ctx, "invoice paid", "bookingId", cacheValue.Booking.BookingID, "invoiceNumber", cacheValue.Invoice.InvoiceNumber, "receiptNumber", paymentResp.ReceiptNumber)
@@ -150,9 +149,9 @@ type WaitForConfirmedBookingStep struct {
 	paymentRuntime
 }
 
-func NewWaitForConfirmedBookingStep(state *domain.State, guestClient *resty.Client, paymentClient *resty.Client, redis *redisc.Redis) steps.Step {
+func NewWaitForConfirmedBookingStep(state *domain.State, guestClient *resty.Client, paymentClient *resty.Client, cache port.Cache) steps.Step {
 	return &WaitForConfirmedBookingStep{
-		paymentRuntime: newPaymentRuntime(state, guestClient, paymentClient, redis),
+		paymentRuntime: newPaymentRuntime(state, guestClient, paymentClient, cache),
 	}
 }
 
@@ -191,11 +190,11 @@ func (s WaitForConfirmedBookingStep) Execute(ctx context.Context) error {
 	return fmt.Errorf("booking %s was not confirmed after %d attempts", cacheValue.Booking.BookingID, bookingConfirmMaxAttempts)
 }
 
-func newPaymentRuntime(state *domain.State, guestClient *resty.Client, paymentClient *resty.Client, redis *redisc.Redis) paymentRuntime {
+func newPaymentRuntime(state *domain.State, guestClient *resty.Client, paymentClient *resty.Client, cache port.Cache) paymentRuntime {
 	return paymentRuntime{
 		guestClient:   guestClient,
 		paymentClient: paymentClient,
-		redis:         redis,
+		cache:         cache,
 		state:         state,
 	}
 }
@@ -207,8 +206,8 @@ func (r paymentRuntime) validateBase() error {
 	if r.state.GuestId == "" {
 		return fmt.Errorf("invalid state, guestId is empty")
 	}
-	if r.redis == nil {
-		return fmt.Errorf("invalid redis client")
+	if r.cache == nil {
+		return fmt.Errorf("invalid guest journey cache")
 	}
 	if r.guestClient == nil {
 		return fmt.Errorf("invalid guest client")
@@ -224,7 +223,7 @@ func (r paymentRuntime) loadCache(ctx context.Context) (dto.GuestJourneyCacheVal
 		return dto.GuestJourneyCacheValue{}, err
 	}
 
-	cacheValue, err := journeyctx.Load(ctx, r.redis, r.state)
+	cacheValue, err := r.cache.Load(ctx, r.state)
 	if err != nil {
 		return dto.GuestJourneyCacheValue{}, err
 	}

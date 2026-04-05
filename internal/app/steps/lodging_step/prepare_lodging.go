@@ -7,25 +7,23 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/Kenji-Uema/guestSimulator/internal/app/journeyctx"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto"
-	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
-	"github.com/Kenji-Uema/guestSimulator/internal/transport/grpc"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/go-resty/resty/v2"
 )
 
 type PrepareLodgingStep struct {
-	clock         *grpc.Emu
+	clock         port.Clock
 	cottageClient *resty.Client
 	state         *domain.State
-	redis         *redisc.Redis
+	cache         port.Cache
 }
 
-func NewPrepareLodgingStep(state *domain.State, clock *grpc.Emu, cottageClient *resty.Client, redis *redisc.Redis) steps.Step {
-	return &PrepareLodgingStep{clock: clock, cottageClient: cottageClient, state: state, redis: redis}
+func NewPrepareLodgingStep(state *domain.State, clock port.Clock, cottageClient *resty.Client, cache port.Cache) steps.Step {
+	return &PrepareLodgingStep{clock: clock, cottageClient: cottageClient, state: state, cache: cache}
 }
 
 func (s PrepareLodgingStep) Name() string {
@@ -36,8 +34,8 @@ func (s PrepareLodgingStep) Validate() error {
 	if s.state == nil {
 		return fmt.Errorf("invalid state, state is nil")
 	}
-	if s.redis == nil {
-		return fmt.Errorf("invalid redis client")
+	if s.cache == nil {
+		return fmt.Errorf("invalid guest journey cache")
 	}
 
 	return nil
@@ -69,7 +67,7 @@ func (s PrepareLodgingStep) Execute(ctx context.Context) error {
 			continue
 		}
 
-		cacheValue, err := journeyctx.Load(ctx, s.redis, s.state)
+		cacheValue, err := s.cache.Load(ctx, s.state)
 		if err != nil {
 			return err
 		}
@@ -81,7 +79,7 @@ func (s PrepareLodgingStep) Execute(ctx context.Context) error {
 			Start: checkIn,
 			End:   checkOut,
 		}
-		if err := journeyctx.Save(ctx, s.redis, s.state, cacheValue); err != nil {
+		if err := s.cache.Save(ctx, s.state, cacheValue); err != nil {
 			return err
 		}
 

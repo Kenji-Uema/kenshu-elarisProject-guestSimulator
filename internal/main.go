@@ -28,7 +28,7 @@ type guestJourneyFactoryDeps struct {
 	machineConfig           config.MachinesConfig
 	servicesConfig          config.ServicesConfig
 	rabbitConnection        *mq.RabbitMqConnection
-	redisClient             *redisc.Redis
+	redisCache              *redisc.Cache
 	hourNotificationService services.HourNotificationService
 }
 
@@ -52,22 +52,22 @@ func runCleanup(ctx context.Context, cleanup []func(context.Context) error) erro
 func buildGuestJourney(deps guestJourneyFactoryDeps) (*app.GuestJourney, error) {
 	state := &domain.State{}
 
-	guestRegisterMachine, err := machines.NewGuestRegisterMachineWithState(state, deps.machineConfig.GuestRegister, deps.servicesConfig, deps.redisClient)
+	guestRegisterMachine, err := machines.NewGuestRegisterMachineWithState(state, deps.machineConfig.GuestRegister, deps.servicesConfig, deps.redisCache)
 	if err != nil {
 		return nil, err
 	}
 
-	bookingMachine, err := machines.NewBookingMachineWithState(state, deps.machineConfig.Booking, deps.servicesConfig, deps.redisClient)
+	bookingMachine, err := machines.NewBookingMachineWithState(state, deps.machineConfig.Booking, deps.servicesConfig, deps.redisCache)
 	if err != nil {
 		return nil, err
 	}
 
-	paymentMachine, err := machines.NewPaymentMachineWithState(state, deps.machineConfig.Payment, deps.servicesConfig, deps.redisClient)
+	paymentMachine, err := machines.NewPaymentMachineWithState(state, deps.machineConfig.Payment, deps.servicesConfig, deps.redisCache)
 	if err != nil {
 		return nil, err
 	}
 
-	lodgingMachine, err := machines.NewLodgingMachineWithState(state, deps.machineConfig.Lodging, deps.servicesConfig, deps.redisClient, deps.hourNotificationService)
+	lodgingMachine, err := machines.NewLodgingMachineWithState(state, deps.machineConfig.Lodging, deps.servicesConfig, deps.redisCache, deps.hourNotificationService)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func buildGuestJourney(deps guestJourneyFactoryDeps) (*app.GuestJourney, error) 
 		paymentMachine,
 		lodgingMachine,
 		deps.rabbitConnection,
-		deps.redisClient,
+		deps.redisCache,
 	)
 }
 
@@ -161,7 +161,7 @@ func main() {
 		return redisInfra.Close()
 	})
 
-	probeServer := http.StartHTTPServer(configs.ProbeConfig, configs.ServicesConfig, rabbitmqInfra.Connection, redisInfra.Client)
+	probeServer := http.StartHTTPServer(configs.ProbeConfig, configs.ServicesConfig, rabbitmqInfra.Connection, redisInfra.Raw)
 	cleanup = append(cleanup, func(context.Context) error {
 		http.ShutDownHTTPServer(probeServer)
 		return nil
@@ -178,7 +178,7 @@ func main() {
 			machineConfig:           configs.MachinesConfig,
 			servicesConfig:          configs.ServicesConfig,
 			rabbitConnection:        rabbitmqInfra.Connection,
-			redisClient:             redisInfra.Client,
+			redisCache:              redisInfra.Client,
 			hourNotificationService: hourNotificationService,
 		})
 	})

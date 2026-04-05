@@ -2,6 +2,7 @@ package machines
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,24 +11,20 @@ import (
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps/register_guest_step"
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
-	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/Kenji-Uema/guestSimulator/internal/transport/grpc"
 	"github.com/Kenji-Uema/guestSimulator/internal/transport/http"
 	"github.com/go-resty/resty/v2"
 )
 
-func NewBookingMachine(machineConfig config.BookingMachineConfig, serviceConfig config.ServicesConfig, redis *redisc.Redis) (*Machine, error) {
-	return NewBookingMachineWithState(&domain.State{}, machineConfig, serviceConfig, redis)
-}
-
-func NewBookingMachineWithState(state *domain.State, machineConfig config.BookingMachineConfig, serviceConfig config.ServicesConfig, redis *redisc.Redis) (*Machine, error) {
+func NewBookingMachineWithState(state *domain.State, machineConfig config.BookingMachineConfig, serviceConfig config.ServicesConfig, cache port.Cache) (*Machine, error) {
 	cottageClient := http.NewRestyClient(serviceConfig.CottageManagerUrl, serviceConfig.CottageManagerPort)
 	guestClient := http.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
 	clockEmu, err := grpc.NewClockEmu(serviceConfig)
 	if err != nil {
 		return nil, err
 	}
-	return buildBookingMachine(state, cottageClient, guestClient, redis, clockEmu, machineConfig.TimeBetweenStepsInSeconds, config.DefaultBookingFlow).machine, nil
+	return buildBookingMachine(state, cottageClient, guestClient, cache, clockEmu, machineConfig.TimeBetweenStepsInSeconds, config.DefaultBookingFlow).machine, nil
 }
 
 type bookingFlowBuilder func(config.BookingSteps) config.BookingFlow
@@ -99,7 +96,7 @@ func RunBookingJourney(ctx context.Context, machine *Machine, timeBetweenStepsIn
 				return err
 			}
 			if err := executeStep(selectPeriodStep); err != nil {
-				if err == booking_step.ErrNoSuitablePeriod {
+				if errors.Is(err, booking_step.ErrNoSuitablePeriod) {
 					continue
 				}
 				return err
@@ -112,15 +109,15 @@ func RunBookingJourney(ctx context.Context, machine *Machine, timeBetweenStepsIn
 	}
 }
 
-func buildBookingMachine(state *domain.State, cottageClient *resty.Client, guestClient *resty.Client, redis *redisc.Redis, clockEmu *grpc.Emu,
+func buildBookingMachine(state *domain.State, cottageClient *resty.Client, guestClient *resty.Client, cache port.Cache, clockEmu port.Clock,
 	timeBetweenStepsInSeconds int, flowBuilder bookingFlowBuilder) bookingMachineParts {
 	bookingMachineStates := map[string]steps.Step{
 		"End":           steps.NewEndStep(state),
-		"SelectCottage": booking_step.NewSelectCottageStep(state, redis),
+		"SelectCottage": booking_step.NewSelectCottageStep(state, cache),
 		"ListCottages":  booking_step.NewListCottagesStep(state, cottageClient),
-		"SelectPeriod":  booking_step.NewSelectPeriodStep(state, clockEmu, cottageClient, redis),
-		"RegisterGuest": register_guest_step.NewRegisterGuestStep(guestClient, redis, state),
-		"BookCottage":   booking_step.NewBookCottageStep(state, cottageClient, redis),
+		"SelectPeriod":  booking_step.NewSelectPeriodStep(state, clockEmu, cottageClient, cache),
+		"RegisterGuest": register_guest_step.NewRegisterGuestStep(guestClient, cache, state),
+		"BookCottage":   booking_step.NewBookCottageStep(state, cottageClient, cache),
 	}
 
 	flow := flowBuilder(config.BookingSteps{

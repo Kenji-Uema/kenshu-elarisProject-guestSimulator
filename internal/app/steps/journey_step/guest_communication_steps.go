@@ -6,15 +6,13 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/Kenji-Uema/guestSimulator/internal/app/journeyctx"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto"
-	"github.com/Kenji-Uema/guestSimulator/internal/infra/mq"
-	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
-	communication "github.com/Kenji-Uema/guestSimulator/internal/transport/grpc/pb/communication"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
+	"github.com/Kenji-Uema/guestSimulator/internal/transport/grpc/pb/communication"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/protobuf/proto"
@@ -31,16 +29,17 @@ const (
 )
 
 type setupGuestCommunicationStep struct {
-	state      *domain.State
-	connection *mq.RabbitMqConnection
-	runtime    *GuestCommunicationRuntime
+	state           *domain.State
+	connection      port.RabbitConnection
+	consumerFactory port.RabbitConsumerFactory
+	runtime         *GuestCommunicationRuntime
 }
 
 type waitGuestMessageStep struct {
 	name         string
 	messageType  string
 	state        *domain.State
-	redis        *redisc.Redis
+	cache        port.Cache
 	runtime      *GuestCommunicationRuntime
 	matchMessage func(ctx context.Context, delivery amqp.Delivery, cacheValue dto.GuestJourneyCacheValue) error
 }
@@ -50,16 +49,16 @@ type closeGuestCommunicationStep struct {
 	runtime *GuestCommunicationRuntime
 }
 
-func NewSetupGuestCommunicationStep(state *domain.State, connection *mq.RabbitMqConnection, runtime *GuestCommunicationRuntime) steps.Step {
-	return &setupGuestCommunicationStep{state: state, connection: connection, runtime: runtime}
+func NewSetupGuestCommunicationStep(state *domain.State, connection port.RabbitConnection, consumerFactory port.RabbitConsumerFactory, runtime *GuestCommunicationRuntime) steps.Step {
+	return &setupGuestCommunicationStep{state: state, connection: connection, consumerFactory: consumerFactory, runtime: runtime}
 }
 
-func NewWaitPaymentRequestStep(state *domain.State, redis *redisc.Redis, runtime *GuestCommunicationRuntime) steps.Step {
+func NewWaitPaymentRequestStep(state *domain.State, cache port.Cache, runtime *GuestCommunicationRuntime) steps.Step {
 	return &waitGuestMessageStep{
 		name:        "WaitPaymentRequestStep",
 		messageType: paymentRequestMessageType,
 		state:       state,
-		redis:       redis,
+		cache:       cache,
 		runtime:     runtime,
 		matchMessage: func(_ context.Context, delivery amqp.Delivery, cacheValue dto.GuestJourneyCacheValue) error {
 			var msg communication.PaymentRequest
@@ -92,12 +91,12 @@ func NewWaitPaymentRequestStep(state *domain.State, redis *redisc.Redis, runtime
 	}
 }
 
-func NewWaitBookingConfirmationStep(state *domain.State, redis *redisc.Redis, runtime *GuestCommunicationRuntime) steps.Step {
+func NewWaitBookingConfirmationStep(state *domain.State, cache port.Cache, runtime *GuestCommunicationRuntime) steps.Step {
 	return &waitGuestMessageStep{
 		name:        "WaitBookingConfirmationStep",
 		messageType: bookingConfirmationMessageType,
 		state:       state,
-		redis:       redis,
+		cache:       cache,
 		runtime:     runtime,
 		matchMessage: func(_ context.Context, delivery amqp.Delivery, cacheValue dto.GuestJourneyCacheValue) error {
 			var msg communication.BookingConfirmedNotificationEvent
@@ -121,12 +120,12 @@ func NewWaitBookingConfirmationStep(state *domain.State, redis *redisc.Redis, ru
 	}
 }
 
-func NewWaitCheckinTomorrowStep(state *domain.State, redis *redisc.Redis, runtime *GuestCommunicationRuntime) steps.Step {
+func NewWaitCheckinTomorrowStep(state *domain.State, cache port.Cache, runtime *GuestCommunicationRuntime) steps.Step {
 	return &waitGuestMessageStep{
 		name:        "WaitCheckinTomorrowStep",
 		messageType: checkinTomorrowMessageType,
 		state:       state,
-		redis:       redis,
+		cache:       cache,
 		runtime:     runtime,
 		matchMessage: func(_ context.Context, delivery amqp.Delivery, cacheValue dto.GuestJourneyCacheValue) error {
 			var msg communication.CheckInTomorrowNotification
@@ -171,6 +170,9 @@ func (s setupGuestCommunicationStep) Validate() error {
 	if s.connection == nil {
 		return fmt.Errorf("invalid rabbitmq connection")
 	}
+	if s.consumerFactory == nil {
+		return fmt.Errorf("invalid rabbitmq consumer factory")
+	}
 	if s.runtime == nil {
 		return fmt.Errorf("invalid guest communication runtime")
 	}
@@ -184,7 +186,7 @@ func (s setupGuestCommunicationStep) Execute(ctx context.Context) error {
 	s.state.QueueName = guestQueuePrefix + s.state.GuestId
 	s.state.RoutingKey = guestRoutingKeyPrefix + s.state.GuestId
 
-	consumer, err := mq.NewRabbitmqConsumer(s.connection, config.ConsumeConfig{})
+	consumer, err := s.consumerFactory.NewConsumer(s.connection, config.ConsumeConfig{})
 	if err != nil {
 		return err
 	}
@@ -234,8 +236,8 @@ func (s waitGuestMessageStep) Validate() error {
 	if s.state == nil {
 		return fmt.Errorf("invalid state, state is nil")
 	}
-	if s.redis == nil {
-		return fmt.Errorf("invalid redis client")
+	if s.cache == nil {
+		return fmt.Errorf("invalid guest journey cache")
 	}
 	if s.runtime.Deliveries == nil {
 		return fmt.Errorf("guest communication deliveries not initialized")
@@ -350,7 +352,7 @@ func (s waitGuestMessageStep) matchDelivery(ctx context.Context, delivery amqp.D
 		return fmt.Errorf("message_type %q does not match expected %q", messageType, s.messageType)
 	}
 
-	cacheValue, err := journeyctx.Load(ctx, s.redis, s.state)
+	cacheValue, err := s.cache.Load(ctx, s.state)
 	if err != nil {
 		return err
 	}

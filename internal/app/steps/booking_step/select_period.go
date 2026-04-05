@@ -10,12 +10,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/Kenji-Uema/guestSimulator/internal/app/journeyctx"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
-	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
-	"github.com/Kenji-Uema/guestSimulator/internal/transport/grpc"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -25,10 +23,10 @@ var searchWindows = []int{3, 5, 7, 10, 14, 21, 30}
 var ErrNoSuitablePeriod = errors.New("no suitable period found")
 
 type SelectPeriodStep struct {
-	clock  *grpc.Emu
+	clock  port.Clock
 	client *resty.Client
 	state  *domain.State
-	redis  *redisc.Redis
+	cache  port.Cache
 }
 
 type stayCandidate struct {
@@ -38,8 +36,8 @@ type stayCandidate struct {
 	nights      int
 }
 
-func NewSelectPeriodStep(state *domain.State, clock *grpc.Emu, client *resty.Client, redis *redisc.Redis) steps.Step {
-	return &SelectPeriodStep{clock: clock, client: client, state: state, redis: redis}
+func NewSelectPeriodStep(state *domain.State, clock port.Clock, client *resty.Client, cache port.Cache) steps.Step {
+	return &SelectPeriodStep{clock: clock, client: client, state: state, cache: cache}
 }
 
 func (s SelectPeriodStep) Name() string {
@@ -50,8 +48,8 @@ func (s SelectPeriodStep) Validate() error {
 	if s.state == nil {
 		return fmt.Errorf("invalid state, state is nil")
 	}
-	if s.redis == nil {
-		return fmt.Errorf("invalid redis client")
+	if s.cache == nil {
+		return fmt.Errorf("invalid guest journey cache")
 	}
 
 	return nil
@@ -68,7 +66,7 @@ func (s SelectPeriodStep) Execute(ctx context.Context) error {
 		return err
 	}
 
-	cacheValue, err := journeyctx.Load(ctx, s.redis, s.state)
+	cacheValue, err := s.cache.Load(ctx, s.state)
 	if err != nil {
 		return err
 	}
@@ -90,7 +88,7 @@ func (s SelectPeriodStep) Execute(ctx context.Context) error {
 		if ok {
 			cacheValue.Booking.SelectedCottage = selectedCottage
 			cacheValue.Booking.SelectedPeriod = selectedPeriod
-			if err := journeyctx.Save(ctx, s.redis, s.state, cacheValue); err != nil {
+			if err := s.cache.Save(ctx, s.state, cacheValue); err != nil {
 				return err
 			}
 			slog.InfoContext(ctx, "state updated, stay period selected", "selectedCottage", selectedCottage, "selectedPeriod", selectedPeriod)

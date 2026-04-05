@@ -8,21 +8,17 @@ import (
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps/payment_step"
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
-	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	transporthttp "github.com/Kenji-Uema/guestSimulator/internal/transport/http"
 )
 
-func NewPaymentMachine(machineConfig config.PaymentMachineConfig, serviceConfig config.ServicesConfig, redis *redisc.Redis) (*Machine, error) {
-	return NewPaymentMachineWithState(&domain.State{}, machineConfig, serviceConfig, redis)
-}
-
-func NewPaymentMachineWithState(state *domain.State, machineConfig config.PaymentMachineConfig, serviceConfig config.ServicesConfig, redis *redisc.Redis) (*Machine, error) {
+func NewPaymentMachineWithState(state *domain.State, machineConfig config.PaymentMachineConfig, serviceConfig config.ServicesConfig, cache port.Cache) (*Machine, error) {
 	guestClient := transporthttp.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
 	paymentClient := transporthttp.NewRestyClient(serviceConfig.PaymentSimulatorUrl, serviceConfig.PaymentSimulatorPort)
 
-	waitForInvoiceStep := payment_step.NewWaitForInvoiceStep(state, guestClient, paymentClient, redis)
-	payInvoiceStep := payment_step.NewPayInvoiceStep(state, guestClient, paymentClient, redis)
-	waitForConfirmedBookingStep := payment_step.NewWaitForConfirmedBookingStep(state, guestClient, paymentClient, redis)
+	waitForInvoiceStep := payment_step.NewWaitForInvoiceStep(state, guestClient, paymentClient, cache)
+	payInvoiceStep := payment_step.NewPayInvoiceStep(state, guestClient, paymentClient, cache)
+	waitForConfirmedBookingStep := payment_step.NewWaitForConfirmedBookingStep(state, guestClient, paymentClient, cache)
 	endStep := steps.NewEndStep(state)
 
 	flow := config.DefaultPaymentFlow(config.PaymentSteps{

@@ -5,20 +5,19 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/Kenji-Uema/guestSimulator/internal/app/journeyctx"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/machines"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps/journey_step"
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/mq"
-	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 )
 
 type GuestJourney struct {
 	state                     *domain.State
-	redisClient               *redisc.Redis
+	cache                     port.Cache
 	guestRegisterMachine      *machines.Machine
 	bookingMachine            *machines.Machine
 	paymentMachine            *machines.Machine
@@ -29,22 +28,22 @@ type GuestJourney struct {
 
 func NewGuestJourney(machineConfig config.GuestJourneyMachineConfig, state *domain.State,
 	guestRegisterMachine *machines.Machine, bookingMachine *machines.Machine, paymentMachine *machines.Machine, lodgingMachine *machines.Machine,
-	rabbitConnection *mq.RabbitMqConnection, redisClient *redisc.Redis) (*GuestJourney, error) {
+	rabbitConnection port.RabbitConnection, cache port.Cache) (*GuestJourney, error) {
 
 	communication := &journey_step.GuestCommunicationRuntime{}
 
-	if state == nil || guestRegisterMachine == nil || bookingMachine == nil || paymentMachine == nil || lodgingMachine == nil || rabbitConnection == nil || redisClient == nil {
+	if state == nil || guestRegisterMachine == nil || bookingMachine == nil || paymentMachine == nil || lodgingMachine == nil || rabbitConnection == nil || cache == nil {
 		return nil, fmt.Errorf("invalid guest journey dependencies")
 	}
 
 	return &GuestJourney{
 		state:                     state,
-		redisClient:               redisClient,
+		cache:                     cache,
 		guestRegisterMachine:      guestRegisterMachine,
 		bookingMachine:            bookingMachine,
 		paymentMachine:            paymentMachine,
 		lodgingMachine:            lodgingMachine,
-		steps:                     journey_step.NewSteps(state, redisClient, rabbitConnection, communication),
+		steps:                     journey_step.NewSteps(state, cache, rabbitConnection, mq.ConsumerFactory{}, communication),
 		timeBetweenStepsInSeconds: machineConfig.TimeBetweenStepsInSeconds,
 	}, nil
 }
@@ -118,7 +117,7 @@ func (g *GuestJourney) runBooking(ctx context.Context) error {
 	if err := machines.RunBookingJourney(ctx, g.bookingMachine, g.timeBetweenStepsInSeconds); err != nil {
 		return err
 	}
-	cacheValue, err := journeyctx.Load(ctx, g.redisClient, g.state)
+	cacheValue, err := g.cache.Load(ctx, g.state)
 	if err != nil {
 		return err
 	}
@@ -158,7 +157,7 @@ func (g *GuestJourney) runBookingPayment(ctx context.Context) error {
 	if err := machines.RunPaymentJourney(ctx, g.paymentMachine, g.timeBetweenStepsInSeconds); err != nil {
 		return err
 	}
-	cacheValue, err := journeyctx.Load(ctx, g.redisClient, g.state)
+	cacheValue, err := g.cache.Load(ctx, g.state)
 	if err != nil {
 		return err
 	}

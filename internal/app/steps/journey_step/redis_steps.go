@@ -5,49 +5,48 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/Kenji-Uema/guestSimulator/internal/app/journeyctx"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto"
-	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"go.opentelemetry.io/otel/attribute"
 )
 
 type upsertGuestCacheStep struct {
 	name  string
 	state *domain.State
-	redis *redisc.Redis
+	cache port.Cache
 }
 
 type logGuestCacheStep struct {
 	state *domain.State
-	redis *redisc.Redis
+	cache port.Cache
 }
 
 type deleteGuestCacheStep struct {
 	state *domain.State
-	redis *redisc.Redis
+	cache port.Cache
 }
 
-func NewSaveGuestCacheStep(state *domain.State, redis *redisc.Redis) steps.Step {
-	return &upsertGuestCacheStep{name: "SaveGuestCacheStep", state: state, redis: redis}
+func NewSaveGuestCacheStep(state *domain.State, cache port.Cache) steps.Step {
+	return &upsertGuestCacheStep{name: "SaveGuestCacheStep", state: state, cache: cache}
 }
 
-func NewUpdateBookingCacheStep(state *domain.State, redis *redisc.Redis) steps.Step {
-	return &upsertGuestCacheStep{name: "UpdateBookingCacheStep", state: state, redis: redis}
+func NewUpdateBookingCacheStep(state *domain.State, cache port.Cache) steps.Step {
+	return &upsertGuestCacheStep{name: "UpdateBookingCacheStep", state: state, cache: cache}
 }
 
-func NewUpdateInvoiceCacheStep(state *domain.State, redis *redisc.Redis) steps.Step {
-	return &upsertGuestCacheStep{name: "UpdateInvoiceCacheStep", state: state, redis: redis}
+func NewUpdateInvoiceCacheStep(state *domain.State, cache port.Cache) steps.Step {
+	return &upsertGuestCacheStep{name: "UpdateInvoiceCacheStep", state: state, cache: cache}
 }
 
-func NewLogGuestCacheStep(state *domain.State, redis *redisc.Redis) steps.Step {
-	return &logGuestCacheStep{state: state, redis: redis}
+func NewLogGuestCacheStep(state *domain.State, cache port.Cache) steps.Step {
+	return &logGuestCacheStep{state: state, cache: cache}
 }
 
-func NewDeleteGuestCacheStep(state *domain.State, redis *redisc.Redis) steps.Step {
-	return &deleteGuestCacheStep{state: state, redis: redis}
+func NewDeleteGuestCacheStep(state *domain.State, cache port.Cache) steps.Step {
+	return &deleteGuestCacheStep{state: state, cache: cache}
 }
 
 func (s upsertGuestCacheStep) Name() string {
@@ -58,8 +57,8 @@ func (s upsertGuestCacheStep) Validate() error {
 	if s.state == nil {
 		return fmt.Errorf("invalid state, state is nil")
 	}
-	if s.redis == nil {
-		return fmt.Errorf("invalid redis client")
+	if s.cache == nil {
+		return fmt.Errorf("invalid guest journey cache")
 	}
 	if s.state.GuestId == "" {
 		return fmt.Errorf("invalid state, guestId is empty")
@@ -71,16 +70,16 @@ func (s upsertGuestCacheStep) Execute(ctx context.Context) error {
 	ctx, span := telemetry.Tracer.Start(ctx, s.name)
 	defer span.End()
 
-	key, err := journeyctx.EnsureRedisKey(s.state)
+	key, err := s.cache.EnsureKey(s.state)
 	if err != nil {
 		return err
 	}
 
 	value := buildCacheValue(s.state)
-	if current, err := journeyctx.Load(ctx, s.redis, s.state); err == nil {
+	if current, err := s.cache.Load(ctx, s.state); err == nil {
 		value = mergeCacheValue(current, value)
 	}
-	if err := journeyctx.Save(ctx, s.redis, s.state, value); err != nil {
+	if err := s.cache.Save(ctx, s.state, value); err != nil {
 		return err
 	}
 
@@ -96,8 +95,8 @@ func (s logGuestCacheStep) Validate() error {
 	if s.state == nil {
 		return fmt.Errorf("invalid state, state is nil")
 	}
-	if s.redis == nil {
-		return fmt.Errorf("invalid redis client")
+	if s.cache == nil {
+		return fmt.Errorf("invalid guest journey cache")
 	}
 	if s.state.RedisKey == "" {
 		return fmt.Errorf("invalid state, redisKey is empty")
@@ -109,7 +108,11 @@ func (s logGuestCacheStep) Execute(ctx context.Context) error {
 	ctx, span := telemetry.Tracer.Start(ctx, "LogGuestCacheStep")
 	defer span.End()
 
-	value, err := s.redis.Get(ctx, s.state.RedisKey)
+	if _, err := s.cache.EnsureKey(s.state); err != nil {
+		return err
+	}
+
+	value, err := s.cache.Get(ctx, s.state.RedisKey)
 	if err != nil {
 		return err
 	}
@@ -126,8 +129,8 @@ func (s deleteGuestCacheStep) Validate() error {
 	if s.state == nil {
 		return fmt.Errorf("invalid state, state is nil")
 	}
-	if s.redis == nil {
-		return fmt.Errorf("invalid redis client")
+	if s.cache == nil {
+		return fmt.Errorf("invalid guest journey cache")
 	}
 	if s.state.RedisKey == "" {
 		return fmt.Errorf("invalid state, redisKey is empty")
@@ -140,7 +143,7 @@ func (s deleteGuestCacheStep) Execute(ctx context.Context) error {
 	defer span.End()
 	span.SetAttributes(attribute.String("redis.key", s.state.RedisKey))
 
-	if err := s.redis.Del(ctx, s.state.RedisKey); err != nil {
+	if err := s.cache.Del(ctx, s.state.RedisKey); err != nil {
 		return err
 	}
 

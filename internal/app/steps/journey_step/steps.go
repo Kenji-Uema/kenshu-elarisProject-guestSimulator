@@ -3,8 +3,7 @@ package journey_step
 import (
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
-	"github.com/Kenji-Uema/guestSimulator/internal/infra/mq"
-	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 )
 
 type CommunicationSteps struct {
@@ -36,24 +35,24 @@ type Steps struct {
 	Cleanup       CleanupSteps
 }
 
-func NewSteps(state *domain.State, redisClient *redisc.Redis, rabbitConnection *mq.RabbitMqConnection, communication *GuestCommunicationRuntime) Steps {
+func NewSteps(state *domain.State, cache port.Cache, rabbitConnection port.RabbitConnection, rabbitConsumerFactory port.RabbitConsumerFactory, communication *GuestCommunicationRuntime) Steps {
 	return Steps{
 		Communication: CommunicationSteps{
-			SaveGuest:  NewSaveGuestCacheStep(state, redisClient),
-			SetupQueue: NewSetupGuestCommunicationStep(state, rabbitConnection, communication),
+			SaveGuest:  NewSaveGuestCacheStep(state, cache),
+			SetupQueue: NewSetupGuestCommunicationStep(state, rabbitConnection, rabbitConsumerFactory, communication),
 		},
 		PaymentWait: PaymentWaitSteps{
-			UpdateBookingCache: NewUpdateBookingCacheStep(state, redisClient),
-			WaitPaymentRequest: NewWaitPaymentRequestStep(state, redisClient, communication),
+			UpdateBookingCache: NewUpdateBookingCacheStep(state, cache),
+			WaitPaymentRequest: NewWaitPaymentRequestStep(state, cache, communication),
 		},
 		StayWait: StayWaitSteps{
-			UpdateInvoiceCache:      NewUpdateInvoiceCacheStep(state, redisClient),
-			WaitBookingConfirmation: NewWaitBookingConfirmationStep(state, redisClient, communication),
-			WaitCheckinTomorrow:     NewWaitCheckinTomorrowStep(state, redisClient, communication),
+			UpdateInvoiceCache:      NewUpdateInvoiceCacheStep(state, cache),
+			WaitBookingConfirmation: NewWaitBookingConfirmationStep(state, cache, communication),
+			WaitCheckinTomorrow:     NewWaitCheckinTomorrowStep(state, cache, communication),
 		},
 		Cleanup: CleanupSteps{
-			LogCache:    NewLogGuestCacheStep(state, redisClient),
-			DeleteCache: NewDeleteGuestCacheStep(state, redisClient),
+			LogCache:    NewLogGuestCacheStep(state, cache),
+			DeleteCache: NewDeleteGuestCacheStep(state, cache),
 			CloseQueue:  NewCloseGuestCommunicationStep(state, communication),
 		},
 	}

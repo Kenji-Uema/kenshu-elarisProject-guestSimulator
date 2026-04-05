@@ -6,13 +6,12 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/Kenji-Uema/guestSimulator/internal/app/journeyctx"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto"
-	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	ws "github.com/Kenji-Uema/guestSimulator/internal/transport/websocket"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
@@ -22,7 +21,7 @@ import (
 type RunLodgingStep struct {
 	state               *domain.State
 	chatURL             string
-	redis               *redisc.Redis
+	cache               port.Cache
 	notificationService hourNotificationService
 	flow                config.LodgingFlow
 }
@@ -38,11 +37,11 @@ type hourNotificationService interface {
 	CurrentTime() (time.Time, bool)
 }
 
-func NewRunLodgingStep(state *domain.State, chatURL string, redis *redisc.Redis, notificationService hourNotificationService, flow config.LodgingFlow) steps.Step {
+func NewRunLodgingStep(state *domain.State, chatURL string, cache port.Cache, notificationService hourNotificationService, flow config.LodgingFlow) steps.Step {
 	return &RunLodgingStep{
 		state:               state,
 		chatURL:             chatURL,
-		redis:               redis,
+		cache:               cache,
 		notificationService: notificationService,
 		flow:                flow,
 	}
@@ -56,8 +55,8 @@ func (s RunLodgingStep) Validate() error {
 	if s.state == nil {
 		return fmt.Errorf("invalid state, state is nil")
 	}
-	if s.redis == nil {
-		return fmt.Errorf("invalid redis client")
+	if s.cache == nil {
+		return fmt.Errorf("invalid guest journey cache")
 	}
 	if s.notificationService == nil {
 		return fmt.Errorf("invalid hour notification service")
@@ -129,7 +128,7 @@ func (s RunLodgingStep) Execute(ctx context.Context) error {
 }
 
 func (s RunLodgingStep) loadCache(ctx context.Context) (dto.GuestJourneyCacheValue, error) {
-	cacheValue, err := journeyctx.Load(ctx, s.redis, s.state)
+	cacheValue, err := s.cache.Load(ctx, s.state)
 	if err != nil {
 		return dto.GuestJourneyCacheValue{}, err
 	}

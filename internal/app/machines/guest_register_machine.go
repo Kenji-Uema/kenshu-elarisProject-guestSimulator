@@ -5,7 +5,7 @@ import (
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps/register_guest_step"
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
-	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/Kenji-Uema/guestSimulator/internal/transport/http"
 	"github.com/go-resty/resty/v2"
 )
@@ -14,9 +14,9 @@ func NewGuestRegisterMachine(machineConfig config.GuestRegisterMachineConfig, se
 	return NewGuestRegisterMachineWithState(&domain.State{}, machineConfig, serviceConfig, nil)
 }
 
-func NewGuestRegisterMachineWithState(state *domain.State, machineConfig config.GuestRegisterMachineConfig, serviceConfig config.ServicesConfig, redis *redisc.Redis) (*Machine, error) {
+func NewGuestRegisterMachineWithState(state *domain.State, machineConfig config.GuestRegisterMachineConfig, serviceConfig config.ServicesConfig, cache port.Cache) (*Machine, error) {
 	guestClient := http.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
-	return buildGuestRegisterMachine(state, guestClient, redis, machineConfig.TimeBetweenStepsInSeconds).machine, nil
+	return buildGuestRegisterMachine(state, guestClient, cache, machineConfig.TimeBetweenStepsInSeconds).machine, nil
 }
 
 type guestRegisterMachineParts struct {
@@ -24,10 +24,10 @@ type guestRegisterMachineParts struct {
 	machine *Machine
 }
 
-func buildGuestRegisterMachine(state *domain.State, guestClient *resty.Client, redis *redisc.Redis, timeBetweenStepsInSeconds int) guestRegisterMachineParts {
+func buildGuestRegisterMachine(state *domain.State, guestClient *resty.Client, cache port.Cache, timeBetweenStepsInSeconds int) guestRegisterMachineParts {
 	registerGuestStates := map[string]steps.Step{
 		"End":           steps.NewEndStep(state),
-		"RegisterGuest": register_guest_step.NewRegisterGuestStep(guestClient, redis, state),
+		"RegisterGuest": register_guest_step.NewRegisterGuestStep(guestClient, cache, state),
 		"RetrieveGuest": register_guest_step.NewRetrieveGuestStep(guestClient, state),
 	}
 

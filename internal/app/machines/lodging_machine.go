@@ -10,7 +10,7 @@ import (
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps/register_guest_step"
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
-	redisc "github.com/Kenji-Uema/guestSimulator/internal/infra/redis"
+	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	"github.com/Kenji-Uema/guestSimulator/internal/transport/grpc"
 	transporthttp "github.com/Kenji-Uema/guestSimulator/internal/transport/http"
 )
@@ -20,12 +20,12 @@ type HourNotificationService interface {
 	CurrentTime() (time.Time, bool)
 }
 
-func NewLodgingMachine(machineConfig config.LodgingMachineConfig, serviceConfig config.ServicesConfig, redis *redisc.Redis,
+func NewLodgingMachine(machineConfig config.LodgingMachineConfig, serviceConfig config.ServicesConfig, cache port.Cache,
 	notificationService HourNotificationService) (*Machine, error) {
-	return NewLodgingMachineWithState(&domain.State{}, machineConfig, serviceConfig, redis, notificationService)
+	return NewLodgingMachineWithState(&domain.State{}, machineConfig, serviceConfig, cache, notificationService)
 }
 
-func NewLodgingMachineWithState(state *domain.State, machineConfig config.LodgingMachineConfig, serviceConfig config.ServicesConfig, redis *redisc.Redis,
+func NewLodgingMachineWithState(state *domain.State, machineConfig config.LodgingMachineConfig, serviceConfig config.ServicesConfig, cache port.Cache,
 	notificationService HourNotificationService) (*Machine, error) {
 	cottageClient := transporthttp.NewRestyClient(serviceConfig.CottageManagerUrl, serviceConfig.CottageManagerPort)
 	guestClient := transporthttp.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
@@ -35,13 +35,13 @@ func NewLodgingMachineWithState(state *domain.State, machineConfig config.Lodgin
 	}
 
 	initStep := steps.NewInitStep(state)
-	prepareStep := lodging_step.NewPrepareLodgingStep(state, clockEmu, cottageClient, redis)
-	registerStep := register_guest_step.NewRegisterGuestStep(guestClient, redis, state)
-	bookStep := lodging_step.NewBookLodgingStep(state, guestClient, redis)
+	prepareStep := lodging_step.NewPrepareLodgingStep(state, clockEmu, cottageClient, cache)
+	registerStep := register_guest_step.NewRegisterGuestStep(guestClient, cache, state)
+	bookStep := lodging_step.NewBookLodgingStep(state, guestClient, cache)
 	runStep := lodging_step.NewRunLodgingStep(
 		state,
 		fmt.Sprintf("ws://%s:%d/lodging/chat", serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort),
-		redis,
+		cache,
 		notificationService,
 		config.DefaultLodgingFlow(),
 	)

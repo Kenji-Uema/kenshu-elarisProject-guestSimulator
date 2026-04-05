@@ -19,7 +19,8 @@ type Rabbitmq struct {
 }
 
 type Redis struct {
-	Client *redisc.Redis
+	Client *redisc.Cache
+	Raw    *redisc.Redis
 	Close  func() error
 }
 
@@ -71,15 +72,17 @@ func NewRedisClient(ctx context.Context, cfg config.RedisConfig) (Redis, error) 
 		WriteTimeout: 5 * time.Second,
 	})
 
-	redisClient := redisc.NewRedisClient(client)
-	if err := redisClient.Ping(ctx); err != nil {
+	redisRaw := redisc.NewRedisClient(client)
+	if err := redisRaw.Ping(ctx); err != nil {
 		_ = client.Close()
 		return Redis{}, fmt.Errorf("redis ping failed for address %s:%d: %w", cfg.Host, cfg.Port, err)
 	}
+	redisClient := redisc.NewCache(redisRaw)
 
 	return Redis{
 		Client: redisClient,
-		Close:  redisClient.Close,
+		Raw:    redisRaw,
+		Close:  redisRaw.Close,
 	}, nil
 }
 

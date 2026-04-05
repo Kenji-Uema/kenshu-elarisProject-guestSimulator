@@ -34,7 +34,11 @@ func (r *Redis) Ping(ctx context.Context) error {
 	return err
 }
 
-func (r *Redis) Set(ctx context.Context, key string, value string) error {
+func (r *Redis) Close() error {
+	return r.client.Close()
+}
+
+func (r *Redis) set(ctx context.Context, key string, value string) error {
 	ctx, span := tracer.Start(ctx, "redis SET")
 	defer span.End()
 
@@ -50,7 +54,7 @@ func (r *Redis) Set(ctx context.Context, key string, value string) error {
 	return err
 }
 
-func (r *Redis) Get(ctx context.Context, key string) (string, error) {
+func (r *Redis) get(ctx context.Context, key string) (string, error) {
 	ctx, span := tracer.Start(ctx, "redis GET")
 	defer span.End()
 
@@ -65,7 +69,7 @@ func (r *Redis) Get(ctx context.Context, key string) (string, error) {
 	return value, err
 }
 
-func (r *Redis) Del(ctx context.Context, key string) error {
+func (r *Redis) del(ctx context.Context, key string) error {
 	ctx, span := tracer.Start(ctx, "redis DEL")
 	defer span.End()
 
@@ -78,10 +82,6 @@ func (r *Redis) Del(ctx context.Context, key string) error {
 	err := r.client.Del(ctx, key).Err()
 	recordSpanError(span, err)
 	return err
-}
-
-func (r *Redis) Close() error {
-	return r.client.Close()
 }
 
 func recordSpanError(span trace.Span, err error) {
