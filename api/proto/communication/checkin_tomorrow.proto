@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package lodging.v1;
-option go_package = "github.com/Kenji-Uema/guestSimulator/internal/transport/grpc/pb/communication;communication";
+option go_package = "github.com/Kenji-Uema/guestSimulator/internal/domain/dto/communication;communication";
 
 import "google/protobuf/timestamp.proto";
 

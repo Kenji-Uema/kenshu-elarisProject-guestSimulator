@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package event;
-option go_package = "github.com/Kenji-Uema/guestSimulator/internal/domain/dto;dto";
+option go_package = "github.com/Kenji-Uema/guestSimulator/internal/domain/dto/time_event;timeevent";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";

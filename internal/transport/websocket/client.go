@@ -2,19 +2,19 @@ package websocket
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"sync"
 	"time"
 
-	"github.com/Kenji-Uema/guestSimulator/internal/domain"
+	lodging "github.com/Kenji-Uema/guestSimulator/internal/domain/dto/lodging"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 const protocolVersion = "lodging.v1"
@@ -22,10 +22,10 @@ const protocolVersion = "lodging.v1"
 type Client struct {
 	conn      *websocket.Conn
 	writeMu   sync.Mutex
-	inboundCh chan *domain.ChatMessage
-	ackCh     chan *domain.ChatMessage
+	inboundCh chan *lodging.ChatMessage
+	ackCh     chan *lodging.ChatMessage
 	errCh     chan error
-	pending   []*domain.ChatMessage
+	pending   []*lodging.ChatMessage
 }
 
 func NewClient(ctx context.Context, url string) (*Client, error) {
@@ -42,8 +42,8 @@ func NewClient(ctx context.Context, url string) (*Client, error) {
 
 	client := &Client{
 		conn:      conn,
-		inboundCh: make(chan *domain.ChatMessage, 32),
-		ackCh:     make(chan *domain.ChatMessage, 32),
+		inboundCh: make(chan *lodging.ChatMessage, 32),
+		ackCh:     make(chan *lodging.ChatMessage, 32),
 		errCh:     make(chan error, 1),
 	}
 	go client.readLoop()
@@ -55,38 +55,39 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-func (c *Client) SendAction(ctx context.Context, action domain.GuestAction) error {
-	return c.sendAndWaitAck(ctx, &domain.ChatMessage{
-		MessageID:       uuid.NewString(),
-		CorrelationID:   uuid.NewString(),
-		Sender:          domain.SenderGuest,
+func (c *Client) SendAction(ctx context.Context, action lodging.GuestAction) error {
+	return c.sendAndWaitAck(ctx, &lodging.ChatMessage{
+		MessageId:       uuid.NewString(),
+		CorrelationId:   uuid.NewString(),
+		Sender:          lodging.Sender_SENDER_GUEST,
 		ProtocolVersion: protocolVersion,
-		GuestAction:     action,
+		Payload:         &lodging.ChatMessage_GuestAction{GuestAction: action},
 	})
 }
 
-func (c *Client) Reply(ctx context.Context, request *domain.ChatMessage, response *domain.GuestResponse) error {
+func (c *Client) Reply(ctx context.Context, request *lodging.ChatMessage, response *lodging.GuestResponse) error {
 	if request == nil {
 		return fmt.Errorf("request is nil")
 	}
 
-	return c.sendAndWaitAck(ctx, &domain.ChatMessage{
-		MessageID:       uuid.NewString(),
-		CorrelationID:   request.CorrelationID,
-		Sender:          domain.SenderGuest,
+	return c.sendAndWaitAck(ctx, &lodging.ChatMessage{
+		MessageId:       uuid.NewString(),
+		CorrelationId:   request.GetCorrelationId(),
+		Sender:          lodging.Sender_SENDER_GUEST,
 		ProtocolVersion: protocolVersion,
-		GuestResponse:   response,
+		Payload:         &lodging.ChatMessage_GuestResponse{GuestResponse: response},
 	})
 }
 
-func (c *Client) WaitForNextSystemMessage(ctx context.Context) (*domain.ChatMessage, error) {
+func (c *Client) WaitForNextSystemMessage(ctx context.Context) (*lodging.ChatMessage, error) {
 	for {
 		msg, err := c.nextMessage(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		if msg.SystemNotification != "" || msg.SystemRequest != "" {
+		if msg.GetSystemNotification() != lodging.SystemNotification_SYSTEM_NOTIFICATION_UNSPECIFIED ||
+			msg.GetSystemRequest() != lodging.SystemRequest_SYSTEM_REQUEST_UNSPECIFIED {
 			return msg, nil
 		}
 
@@ -105,8 +106,8 @@ func (c *Client) readLoop() {
 			return
 		}
 
-		var msg domain.ChatMessage
-		if err := json.Unmarshal(payload, &msg); err != nil {
+		var msg lodging.ChatMessage
+		if err := protojson.Unmarshal(payload, &msg); err != nil {
 			select {
 			case c.errCh <- err:
 			default:
@@ -114,7 +115,7 @@ func (c *Client) readLoop() {
 			return
 		}
 
-		if msg.Ack != nil {
+		if msg.GetAck() != nil {
 			c.ackCh <- &msg
 			continue
 		}
@@ -124,29 +125,29 @@ func (c *Client) readLoop() {
 	}
 }
 
-func (c *Client) sendAck(ctx context.Context, msg *domain.ChatMessage) {
-	if msg == nil || msg.MessageID == "" {
+func (c *Client) sendAck(ctx context.Context, msg *lodging.ChatMessage) {
+	if msg == nil || msg.GetMessageId() == "" {
 		return
 	}
 
-	ack := &domain.ChatMessage{
-		MessageID:       uuid.NewString(),
-		CorrelationID:   msg.MessageID,
-		Sender:          domain.SenderGuest,
+	ack := &lodging.ChatMessage{
+		MessageId:       uuid.NewString(),
+		CorrelationId:   msg.GetMessageId(),
+		Sender:          lodging.Sender_SENDER_GUEST,
 		ProtocolVersion: protocolVersion,
-		Ack: &domain.Ack{
-			AcknowledgedMessageID: msg.MessageID,
-			Status:                "ACK_STATUS_ACCEPTED",
-			Code:                  "ERROR_CODE_NONE",
-		},
+		Payload: &lodging.ChatMessage_Ack{Ack: &lodging.Ack{
+			AcknowledgedMessageId: msg.GetMessageId(),
+			Status:                lodging.AckStatus_ACK_STATUS_ACCEPTED,
+			Code:                  lodging.ErrorCode_ERROR_CODE_NONE,
+		}},
 	}
 
 	if err := c.write(ctx, ack); err != nil {
-		slog.WarnContext(ctx, "failed to send websocket ack", "err", err, "messageId", msg.MessageID)
+		slog.WarnContext(ctx, "failed to send websocket ack", "err", err, "messageId", msg.GetMessageId())
 	}
 }
 
-func (c *Client) sendAndWaitAck(ctx context.Context, msg *domain.ChatMessage) error {
+func (c *Client) sendAndWaitAck(ctx context.Context, msg *lodging.ChatMessage) error {
 	if err := c.write(ctx, msg); err != nil {
 		return err
 	}
@@ -158,7 +159,7 @@ func (c *Client) sendAndWaitAck(ctx context.Context, msg *domain.ChatMessage) er
 		case err := <-c.errCh:
 			return err
 		case ack := <-c.ackCh:
-			if ack.Ack != nil && ack.Ack.AcknowledgedMessageID == msg.MessageID {
+			if ack.GetAck() != nil && ack.GetAck().GetAcknowledgedMessageId() == msg.GetMessageId() {
 				return nil
 			}
 		case inbound := <-c.inboundCh:
@@ -167,7 +168,7 @@ func (c *Client) sendAndWaitAck(ctx context.Context, msg *domain.ChatMessage) er
 	}
 }
 
-func (c *Client) nextMessage(ctx context.Context) (*domain.ChatMessage, error) {
+func (c *Client) nextMessage(ctx context.Context) (*lodging.ChatMessage, error) {
 	if len(c.pending) > 0 {
 		msg := c.pending[0]
 		c.pending = c.pending[1:]
@@ -184,7 +185,7 @@ func (c *Client) nextMessage(ctx context.Context) (*domain.ChatMessage, error) {
 	}
 }
 
-func (c *Client) write(ctx context.Context, msg *domain.ChatMessage) error {
+func (c *Client) write(ctx context.Context, msg *lodging.ChatMessage) error {
 	if msg != nil {
 		carrier := propagation.MapCarrier{}
 		otel.GetTextMapPropagator().Inject(ctx, carrier)
@@ -195,7 +196,7 @@ func (c *Client) write(ctx context.Context, msg *domain.ChatMessage) error {
 		}
 	}
 
-	payload, err := json.Marshal(msg)
+	payload, err := protojson.Marshal(msg)
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto"
+	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto/lodging"
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
 	"github.com/Kenji-Uema/guestSimulator/internal/port"
 	ws "github.com/Kenji-Uema/guestSimulator/internal/transport/websocket"
@@ -28,7 +29,7 @@ type RunLodgingStep struct {
 
 type actionPlanStep struct {
 	dayOffset int
-	action    domain.GuestAction
+	action    lodging.GuestAction
 	gate      config.LodgingActionGate
 }
 
@@ -105,16 +106,14 @@ func (s RunLodgingStep) Execute(ctx context.Context) error {
 		return err
 	}
 
-	msg, err := s.expectRequest(ctx, client, domain.SystemRequestGiveCottageKey)
+	msg, err := s.expectRequest(ctx, client, lodging.SystemRequest_GIVE_COTTAGE_KEY)
 	if err != nil {
 		return err
 	}
-	if err := client.Reply(ctx, msg, &domain.GuestResponse{
-		ReceiveCottageKey: &domain.ReceiveCottageKey{CottageKeyID: keyID},
-	}); err != nil {
+	if err := client.Reply(ctx, msg, guestResponseReceiveCottageKey(keyID)); err != nil {
 		return err
 	}
-	if err := client.SendAction(ctx, domain.GuestActionTakeCottageKey); err != nil {
+	if err := client.SendAction(ctx, lodging.GuestAction_TAKE_COTTAGE_KEY); err != nil {
 		return err
 	}
 	if err := s.executeActionPlan(ctx, "stay", client, s.buildStayActionPlan(cacheValue), cacheValue); err != nil {
@@ -178,7 +177,7 @@ func (s RunLodgingStep) executeActionPlan(ctx context.Context, phase string, cli
 
 		actionCtx, actionSpan := telemetry.Tracer.Start(ctx, "SendLodgingAction")
 		actionSpan.SetAttributes(
-			attribute.String("lodging.action", string(step.action)),
+			attribute.String("lodging.action", step.action.String()),
 			attribute.Int("lodging.day_offset", step.dayOffset),
 		)
 		slog.InfoContext(ctx, "sending planned lodging action",
@@ -189,7 +188,7 @@ func (s RunLodgingStep) executeActionPlan(ctx context.Context, phase string, cli
 			actionSpan.End()
 			return err
 		}
-		if step.gate.WaitForNotification != "" {
+		if step.gate.WaitForNotification != lodging.SystemNotification_SYSTEM_NOTIFICATION_UNSPECIFIED {
 			if err := s.expectNotification(actionCtx, client, step.gate.WaitForNotification); err != nil {
 				actionSpan.End()
 				return err
@@ -215,10 +214,8 @@ func (s RunLodgingStep) executeCheckoutPlan(ctx context.Context, client *ws.Clie
 			return err
 		}
 
-		if step.gate.SystemRequest == domain.SystemRequestCottageKey {
-			if err := client.Reply(actionCtx, msg, &domain.GuestResponse{
-				ReturnCottageKey: &domain.ReturnCottageKey{CottageKeyID: keyID},
-			}); err != nil {
+		if step.gate.SystemRequest == lodging.SystemRequest_REQUEST_COTTAGE_KEY {
+			if err := client.Reply(actionCtx, msg, guestResponseReturnCottageKey(keyID)); err != nil {
 				actionSpan.End()
 				return err
 			}
@@ -232,7 +229,7 @@ func (s RunLodgingStep) executeCheckoutPlan(ctx context.Context, client *ws.Clie
 			actionSpan.End()
 			return err
 		}
-		if step.gate.WaitForNotification != "" {
+		if step.gate.WaitForNotification != lodging.SystemNotification_SYSTEM_NOTIFICATION_UNSPECIFIED {
 			if err := s.expectNotification(actionCtx, client, step.gate.WaitForNotification); err != nil {
 				actionSpan.End()
 				return err
@@ -244,13 +241,13 @@ func (s RunLodgingStep) executeCheckoutPlan(ctx context.Context, client *ws.Clie
 	return nil
 }
 
-func (s RunLodgingStep) waitForActionGate(ctx context.Context, client *ws.Client, step actionPlanStep, cacheValue dto.GuestJourneyCacheValue) (*domain.ChatMessage, error) {
+func (s RunLodgingStep) waitForActionGate(ctx context.Context, client *ws.Client, step actionPlanStep, cacheValue dto.GuestJourneyCacheValue) (*lodging.ChatMessage, error) {
 	ctx, span := telemetry.Tracer.Start(ctx, "WaitForActionGate")
 	defer span.End()
 
 	day := startOfUTCDay(cacheValue.Booking.SelectedPeriod.Start).AddDate(0, 0, step.dayOffset)
 	span.SetAttributes(
-		attribute.String("lodging.action", string(step.action)),
+		attribute.String("lodging.action", step.action.String()),
 		attribute.Int("lodging.day_offset", step.dayOffset),
 		attribute.String("lodging.gate.day", day.Format(time.DateOnly)),
 	)
@@ -263,15 +260,15 @@ func (s RunLodgingStep) waitForActionGate(ctx context.Context, client *ws.Client
 		}
 	}
 
-	if step.gate.SystemNotification != "" {
-		span.SetAttributes(attribute.String("lodging.gate.notification", string(step.gate.SystemNotification)))
+	if step.gate.SystemNotification != lodging.SystemNotification_SYSTEM_NOTIFICATION_UNSPECIFIED {
+		span.SetAttributes(attribute.String("lodging.gate.notification", step.gate.SystemNotification.String()))
 		if err := s.expectNotification(ctx, client, step.gate.SystemNotification); err != nil {
 			return nil, err
 		}
 	}
 
-	if step.gate.SystemRequest != "" {
-		span.SetAttributes(attribute.String("lodging.gate.request", string(step.gate.SystemRequest)))
+	if step.gate.SystemRequest != lodging.SystemRequest_SYSTEM_REQUEST_UNSPECIFIED {
+		span.SetAttributes(attribute.String("lodging.gate.request", step.gate.SystemRequest.String()))
 		msg, err := s.expectRequest(ctx, client, step.gate.SystemRequest)
 		if err != nil {
 			return nil, err
@@ -373,24 +370,20 @@ func (s RunLodgingStep) finishCheckin(ctx context.Context, client *ws.Client, ca
 		}
 
 		switch {
-		case msg.SystemNotification == domain.SystemNotificationBookingChecking:
+		case msg.GetSystemNotification() == lodging.SystemNotification_BOOKING_CHECKING:
 			span.AddEvent("booking checking notification received")
 			continue
-		case msg.SystemNotification == domain.SystemNotificationCheckInComplete:
+		case msg.GetSystemNotification() == lodging.SystemNotification_CHECK_IN_COMPLETE:
 			span.AddEvent("check-in completed")
 			return nil
-		case s.flow.Checkin.ShowDocument.Request != "" && msg.SystemRequest == s.flow.Checkin.ShowDocument.Request:
+		case s.flow.Checkin.ShowDocument.Request != lodging.SystemRequest_SYSTEM_REQUEST_UNSPECIFIED && msg.GetSystemRequest() == s.flow.Checkin.ShowDocument.Request:
 			span.AddEvent("show document request received")
-			if err := client.Reply(ctx, msg, &domain.GuestResponse{
-				ShowDocument: &domain.ShowDocument{DocumentID: cacheValue.PersonalInfo.DocumentId},
-			}); err != nil {
+			if err := client.Reply(ctx, msg, guestResponseShowDocument(cacheValue.PersonalInfo.DocumentId)); err != nil {
 				return err
 			}
-		case s.flow.Checkin.ShowBookingNumber.Request != "" && msg.SystemRequest == s.flow.Checkin.ShowBookingNumber.Request:
+		case s.flow.Checkin.ShowBookingNumber.Request != lodging.SystemRequest_SYSTEM_REQUEST_UNSPECIFIED && msg.GetSystemRequest() == s.flow.Checkin.ShowBookingNumber.Request:
 			span.AddEvent("show booking number request received")
-			if err := client.Reply(ctx, msg, &domain.GuestResponse{
-				ShowBookingNumber: &domain.ShowBookingNumber{BookingID: cacheValue.Booking.BookingID},
-			}); err != nil {
+			if err := client.Reply(ctx, msg, guestResponseShowBookingNumber(cacheValue.Booking.BookingID)); err != nil {
 				return err
 			}
 		default:
@@ -399,42 +392,74 @@ func (s RunLodgingStep) finishCheckin(ctx context.Context, client *ws.Client, ca
 	}
 }
 
-func (s RunLodgingStep) expectNotification(ctx context.Context, client *ws.Client, notification domain.SystemNotification) error {
+func (s RunLodgingStep) expectNotification(ctx context.Context, client *ws.Client, notification lodging.SystemNotification) error {
 	ctx, span := telemetry.Tracer.Start(ctx, "WaitSystemNotification")
 	defer span.End()
 
-	span.SetAttributes(attribute.String("message.notification.expected", string(notification)))
+	span.SetAttributes(attribute.String("message.notification.expected", notification.String()))
 	for {
 		msg, err := client.WaitForNextSystemMessage(ctx)
 		if err != nil {
 			return err
 		}
 
-		if msg.SystemNotification == notification {
+		if msg.GetSystemNotification() == notification {
 			span.AddEvent("expected system notification received")
 			return nil
 		}
 
-		slog.DebugContext(ctx, "ignoring unrelated system notification", "expected", notification, "received", msg.SystemNotification)
+		slog.DebugContext(ctx, "ignoring unrelated system notification", "expected", notification, "received", msg.GetSystemNotification())
 	}
 }
 
-func (s RunLodgingStep) expectRequest(ctx context.Context, client *ws.Client, request domain.SystemRequest) (*domain.ChatMessage, error) {
+func (s RunLodgingStep) expectRequest(ctx context.Context, client *ws.Client, request lodging.SystemRequest) (*lodging.ChatMessage, error) {
 	ctx, span := telemetry.Tracer.Start(ctx, "WaitSystemRequest")
 	defer span.End()
 
-	span.SetAttributes(attribute.String("message.request.expected", string(request)))
+	span.SetAttributes(attribute.String("message.request.expected", request.String()))
 	for {
 		msg, err := client.WaitForNextSystemMessage(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		if msg.SystemRequest == request {
+		if msg.GetSystemRequest() == request {
 			span.AddEvent("expected system request received")
 			return msg, nil
 		}
 
-		slog.DebugContext(ctx, "ignoring unrelated system request", "expected", request, "received", msg.SystemRequest)
+		slog.DebugContext(ctx, "ignoring unrelated system request", "expected", request, "received", msg.GetSystemRequest())
+	}
+}
+
+func guestResponseShowDocument(documentID string) *lodging.GuestResponse {
+	return &lodging.GuestResponse{
+		Payload: &lodging.GuestResponse_ShowDocument{
+			ShowDocument: &lodging.ShowDocument{DocumentId: documentID},
+		},
+	}
+}
+
+func guestResponseShowBookingNumber(bookingID string) *lodging.GuestResponse {
+	return &lodging.GuestResponse{
+		Payload: &lodging.GuestResponse_ShowBookingNumber{
+			ShowBookingNumber: &lodging.ShowBookingNumber{BookingId: bookingID},
+		},
+	}
+}
+
+func guestResponseReceiveCottageKey(keyID string) *lodging.GuestResponse {
+	return &lodging.GuestResponse{
+		Payload: &lodging.GuestResponse_ReceiveCottageKey{
+			ReceiveCottageKey: &lodging.ReceiveCottageKey{CottageKeyId: keyID},
+		},
+	}
+}
+
+func guestResponseReturnCottageKey(keyID string) *lodging.GuestResponse {
+	return &lodging.GuestResponse{
+		Payload: &lodging.GuestResponse_ReturnCottageKey{
+			ReturnCottageKey: &lodging.ReturnCottageKey{CottageKeyId: keyID},
+		},
 	}
 }

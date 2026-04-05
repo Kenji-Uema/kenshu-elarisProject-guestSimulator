@@ -10,8 +10,8 @@ import (
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps/register_guest_step"
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
+	"github.com/Kenji-Uema/guestSimulator/internal/infra/clock"
 	"github.com/Kenji-Uema/guestSimulator/internal/port"
-	"github.com/Kenji-Uema/guestSimulator/internal/transport/grpc"
 	transporthttp "github.com/Kenji-Uema/guestSimulator/internal/transport/http"
 )
 
@@ -29,7 +29,7 @@ func NewLodgingMachineWithState(state *domain.State, machineConfig config.Lodgin
 	notificationService HourNotificationService) (*Machine, error) {
 	cottageClient := transporthttp.NewRestyClient(serviceConfig.CottageManagerUrl, serviceConfig.CottageManagerPort)
 	guestClient := transporthttp.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
-	clockEmu, err := grpc.NewClockEmu(serviceConfig)
+	clockEmu, err := clock.NewClockEmu(serviceConfig)
 	if err != nil {
 		return nil, err
 	}

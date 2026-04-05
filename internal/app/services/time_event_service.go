@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
-	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto"
+	timeevent "github.com/Kenji-Uema/guestSimulator/internal/domain/dto/time_event"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/protobuf/proto"
 )
@@ -161,7 +161,7 @@ func (s *timeEventService) nackDelivery(ctx context.Context, delivery amqp.Deliv
 }
 
 func (s *timeEventService) unmarshalTimeEvent(ctx context.Context, body []byte) (time.Time, error) {
-	var timeEvent dto.TimeEvent
+	var timeEvent timeevent.TimeEvent
 	if err := proto.Unmarshal(body, &timeEvent); err != nil {
 		slog.WarnContext(ctx, "invalid hour.changed payload", "error", err)
 		return time.Time{}, err

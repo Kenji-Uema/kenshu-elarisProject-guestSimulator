@@ -1,7 +1,7 @@
 syntax = "proto3";
 package lodging.v1;
 
-option go_package = "github.com/Kenji-Uema/guestManager/internal/domain/dto;dto";
+option go_package = "github.com/Kenji-Uema/guestSimulator/internal/domain/dto/lodging;lodging";
 
 // Actions initiated by a guest during the stay lifecycle.
 enum GuestAction {
