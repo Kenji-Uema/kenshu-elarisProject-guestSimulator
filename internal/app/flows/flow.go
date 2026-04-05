@@ -1,4 +1,4 @@
-package machines
+package flows
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/Kenji-Uema/guestSimulator/internal/infra/telemetry"
 )
 
-type Machine struct {
+type Flow struct {
 	spanName                  string
 	zeroStep                  steps.Step
 	firstStep                 steps.Step
@@ -23,19 +23,19 @@ type Startable interface {
 	Start(ctx context.Context) error
 }
 
-func (m *Machine) Start(ctx context.Context) error {
-	return runStepGraph(ctx, m.spanName, m.zeroStep, m.firstStep, m.stateMap, m.timeBetweenStepsInSeconds)
+func (f *Flow) Start(ctx context.Context) error {
+	return runStepGraph(ctx, f.spanName, f.zeroStep, f.firstStep, f.stateMap, f.timeBetweenStepsInSeconds)
 }
 
 func runStepGraph(ctx context.Context, spanName string, zeroStep steps.Step, firstStep steps.Step,
 	stateMap map[steps.Step][]domain.WeightedTuple[steps.Step], timeBetweenStepsInSeconds int) error {
-	machineCtx, cancel := context.WithCancel(ctx)
+	flowCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	machineCtx, span := telemetry.Tracer.Start(machineCtx, spanName)
+	flowCtx, span := telemetry.Tracer.Start(flowCtx, spanName)
 	defer span.End()
 
-	if err := zeroStep.Execute(machineCtx); err != nil {
+	if err := zeroStep.Execute(flowCtx); err != nil {
 		return err
 	}
 	step := firstStep
@@ -44,19 +44,19 @@ func runStepGraph(ctx context.Context, spanName string, zeroStep steps.Step, fir
 	defer ticker.Stop()
 	for {
 		select {
-		case <-machineCtx.Done():
+		case <-flowCtx.Done():
 			return nil
 		case <-ticker.C:
 			// If cancellation won the race with ticker, stop before running another step.
-			if machineCtx.Err() != nil {
+			if flowCtx.Err() != nil {
 				return nil
 			}
-			slog.InfoContext(machineCtx, "executing step", "step", step.Name())
+			slog.InfoContext(flowCtx, "executing step", "step", step.Name())
 
 			if err := step.Validate(); err != nil {
 				return err
 			}
-			if err := step.Execute(machineCtx); err != nil {
+			if err := step.Execute(flowCtx); err != nil {
 				return err
 			}
 
@@ -65,7 +65,7 @@ func runStepGraph(ctx context.Context, spanName string, zeroStep steps.Step, fir
 				return nil
 			} else {
 				nextStep := services.PickRandomWeighted(nextStep)
-				slog.InfoContext(machineCtx, "transitioning to state", "oldStep", step.Name(), "newStep", nextStep.Name())
+				slog.InfoContext(flowCtx, "transitioning to state", "oldStep", step.Name(), "newStep", nextStep.Name())
 				step = nextStep
 			}
 		}

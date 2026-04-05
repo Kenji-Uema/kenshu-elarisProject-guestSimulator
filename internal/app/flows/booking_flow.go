@@ -1,4 +1,4 @@
-package machines
+package flows
 
 import (
 	"context"
@@ -17,26 +17,26 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func NewBookingMachineWithState(state *domain.State, machineConfig config.BookingMachineConfig, serviceConfig config.ServicesConfig, cache port.Cache) (*Machine, error) {
+func NewBookingFlowWithState(state *domain.State, flowConfig config.BookingFlowConfig, serviceConfig config.ServicesConfig, cache port.Cache) (*Flow, error) {
 	cottageClient := http.NewRestyClient(serviceConfig.CottageManagerUrl, serviceConfig.CottageManagerPort)
 	guestClient := http.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
 	clockEmu, err := clock.NewClockEmu(serviceConfig)
 	if err != nil {
 		return nil, err
 	}
-	return buildBookingMachine(state, cottageClient, guestClient, cache, clockEmu, machineConfig.TimeBetweenStepsInSeconds, config.DefaultBookingFlow).machine, nil
+	return buildBookingFlow(state, cottageClient, guestClient, cache, clockEmu, flowConfig.TimeBetweenStepsInSeconds, config.DefaultBookingFlow).flowRunner, nil
 }
 
 type bookingFlowBuilder func(config.BookingSteps) config.BookingFlow
 
-type bookingMachineParts struct {
-	flow    config.BookingFlow
-	machine *Machine
+type bookingFlowParts struct {
+	flow       config.BookingFlow
+	flowRunner *Flow
 }
 
-func RunBookingJourney(ctx context.Context, machine *Machine, timeBetweenStepsInSeconds int) error {
-	if machine == nil {
-		return fmt.Errorf("failed to compose booking journey from booking machine")
+func RunBookingFlow(ctx context.Context, flow *Flow, timeBetweenStepsInSeconds int) error {
+	if flow == nil {
+		return fmt.Errorf("failed to compose booking journey from booking flow")
 	}
 
 	var listCottagesStep steps.Step
@@ -45,11 +45,11 @@ func RunBookingJourney(ctx context.Context, machine *Machine, timeBetweenStepsIn
 	var registerGuestStep steps.Step
 	var bookCottageStep steps.Step
 
-	if machine.firstStep != nil && machine.firstStep.Name() == "ListCottagesStep" {
-		listCottagesStep = machine.firstStep
+	if flow.firstStep != nil && flow.firstStep.Name() == "ListCottagesStep" {
+		listCottagesStep = flow.firstStep
 	}
 
-	for step := range machine.stateMap {
+	for step := range flow.stateMap {
 		if step == nil {
 			continue
 		}
@@ -68,7 +68,7 @@ func RunBookingJourney(ctx context.Context, machine *Machine, timeBetweenStepsIn
 	}
 
 	if listCottagesStep == nil || selectCottageStep == nil || selectPeriodStep == nil || registerGuestStep == nil || bookCottageStep == nil {
-		return fmt.Errorf("failed to compose booking journey from booking machine")
+		return fmt.Errorf("failed to compose booking journey from booking flow")
 	}
 
 	executeStep := func(step steps.Step) error {
@@ -109,9 +109,9 @@ func RunBookingJourney(ctx context.Context, machine *Machine, timeBetweenStepsIn
 	}
 }
 
-func buildBookingMachine(state *domain.State, cottageClient *resty.Client, guestClient *resty.Client, cache port.Cache, clockEmu port.Clock,
-	timeBetweenStepsInSeconds int, flowBuilder bookingFlowBuilder) bookingMachineParts {
-	bookingMachineStates := map[string]steps.Step{
+func buildBookingFlow(state *domain.State, cottageClient *resty.Client, guestClient *resty.Client, cache port.Cache, clockEmu port.Clock,
+	timeBetweenStepsInSeconds int, flowBuilder bookingFlowBuilder) bookingFlowParts {
+	bookingFlowSteps := map[string]steps.Step{
 		"End":           steps.NewEndStep(state),
 		"SelectCottage": booking_step.NewSelectCottageStep(state, cache),
 		"ListCottages":  booking_step.NewListCottagesStep(state, cottageClient),
@@ -121,18 +121,18 @@ func buildBookingMachine(state *domain.State, cottageClient *resty.Client, guest
 	}
 
 	flow := flowBuilder(config.BookingSteps{
-		End:           bookingMachineStates["End"],
-		ListCottages:  bookingMachineStates["ListCottages"],
-		SelectCottage: bookingMachineStates["SelectCottage"],
-		SelectPeriod:  bookingMachineStates["SelectPeriod"],
-		RegisterGuest: bookingMachineStates["RegisterGuest"],
-		BookCottage:   bookingMachineStates["BookCottage"],
+		End:           bookingFlowSteps["End"],
+		ListCottages:  bookingFlowSteps["ListCottages"],
+		SelectCottage: bookingFlowSteps["SelectCottage"],
+		SelectPeriod:  bookingFlowSteps["SelectPeriod"],
+		RegisterGuest: bookingFlowSteps["RegisterGuest"],
+		BookCottage:   bookingFlowSteps["BookCottage"],
 	})
 
-	return bookingMachineParts{
+	return bookingFlowParts{
 		flow: flow,
-		machine: &Machine{
-			spanName:                  "BookingMachine",
+		flowRunner: &Flow{
+			spanName:                  "BookingFlow",
 			zeroStep:                  steps.NewInitStep(state),
 			firstStep:                 flow.Start,
 			stateMap:                  flow.StateMap(),

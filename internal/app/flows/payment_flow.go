@@ -1,4 +1,4 @@
-package machines
+package flows
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/Kenji-Uema/guestSimulator/internal/port"
 )
 
-func NewPaymentMachineWithState(state *domain.State, machineConfig config.PaymentMachineConfig, serviceConfig config.ServicesConfig, cache port.Cache) (*Machine, error) {
+func NewPaymentFlowWithState(state *domain.State, flowConfig config.PaymentFlowConfig, serviceConfig config.ServicesConfig, cache port.Cache) (*Flow, error) {
 	guestClient := http.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
 	paymentClient := http.NewRestyClient(serviceConfig.PaymentSimulatorUrl, serviceConfig.PaymentSimulatorPort)
 
@@ -28,29 +28,29 @@ func NewPaymentMachineWithState(state *domain.State, machineConfig config.Paymen
 		End:                     endStep,
 	})
 
-	return &Machine{
-		spanName:                  "PaymentMachine",
+	return &Flow{
+		spanName:                  "PaymentFlow",
 		zeroStep:                  steps.NewInitStep(state),
 		firstStep:                 flow.Start,
 		stateMap:                  flow.StateMap(),
-		timeBetweenStepsInSeconds: machineConfig.TimeBetweenStepsInSeconds,
+		timeBetweenStepsInSeconds: flowConfig.TimeBetweenStepsInSeconds,
 	}, nil
 }
 
-func RunPaymentJourney(ctx context.Context, machine *Machine, timeBetweenStepsInSeconds int) error {
-	if machine == nil {
-		return fmt.Errorf("failed to compose payment journey from payment machine")
+func RunPaymentFlow(ctx context.Context, flow *Flow, timeBetweenStepsInSeconds int) error {
+	if flow == nil {
+		return fmt.Errorf("failed to compose payment journey from payment flow")
 	}
 
 	var waitForInvoiceStep steps.Step
 	var payInvoiceStep steps.Step
 	var waitForConfirmedBookingStep steps.Step
 
-	if machine.firstStep != nil && machine.firstStep.Name() == "WaitForInvoiceStep" {
-		waitForInvoiceStep = machine.firstStep
+	if flow.firstStep != nil && flow.firstStep.Name() == "WaitForInvoiceStep" {
+		waitForInvoiceStep = flow.firstStep
 	}
 
-	for step := range machine.stateMap {
+	for step := range flow.stateMap {
 		if step == nil {
 			continue
 		}
@@ -65,10 +65,10 @@ func RunPaymentJourney(ctx context.Context, machine *Machine, timeBetweenStepsIn
 	}
 
 	if waitForInvoiceStep == nil || payInvoiceStep == nil || waitForConfirmedBookingStep == nil {
-		return fmt.Errorf("failed to compose payment journey from payment machine")
+		return fmt.Errorf("failed to compose payment journey from payment flow")
 	}
 
-	return runStepGraph(ctx, "GuestJourneyPaymentFlow", noopStep{}, waitForInvoiceStep, map[steps.Step][]domain.WeightedTuple[steps.Step]{
+	return runStepGraph(ctx, "GuestJourneyPaymentFlow", steps.NewNoopStep(), waitForInvoiceStep, map[steps.Step][]domain.WeightedTuple[steps.Step]{
 		waitForInvoiceStep:          {{Value: payInvoiceStep, Weight: 1}},
 		payInvoiceStep:              {{Value: waitForConfirmedBookingStep, Weight: 1}},
 		waitForConfirmedBookingStep: nil,

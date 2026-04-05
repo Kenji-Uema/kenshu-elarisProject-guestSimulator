@@ -1,4 +1,4 @@
-package machines
+package flows
 
 import (
 	"context"
@@ -21,8 +21,8 @@ type HourNotificationService interface {
 	CurrentTime() (time.Time, bool)
 }
 
-func NewLodgingMachineWithState(state *domain.State, machineConfig config.LodgingMachineConfig, serviceConfig config.ServicesConfig, cache port.Cache,
-	notificationService HourNotificationService) (*Machine, error) {
+func NewLodgingFlowWithState(state *domain.State, flowConfig config.LodgingFlowConfig, serviceConfig config.ServicesConfig, cache port.Cache,
+	notificationService HourNotificationService) (*Flow, error) {
 	cottageClient := http.NewRestyClient(serviceConfig.CottageManagerUrl, serviceConfig.CottageManagerPort)
 	guestClient := http.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
 	clockEmu, err := clock.NewClockEmu(serviceConfig)
@@ -44,8 +44,8 @@ func NewLodgingMachineWithState(state *domain.State, machineConfig config.Lodgin
 	)
 	endStep := steps.NewEndStep(state)
 
-	return &Machine{
-		spanName:  "LodgingMachine",
+	return &Flow{
+		spanName:  "LodgingFlow",
 		zeroStep:  initStep,
 		firstStep: prepareStep,
 		stateMap: map[steps.Step][]domain.WeightedTuple[steps.Step]{
@@ -54,27 +54,27 @@ func NewLodgingMachineWithState(state *domain.State, machineConfig config.Lodgin
 			bookStep:     {{Value: runStep, Weight: 1}},
 			runStep:      {{Value: endStep, Weight: 1}},
 		},
-		timeBetweenStepsInSeconds: machineConfig.TimeBetweenStepsInSeconds,
+		timeBetweenStepsInSeconds: flowConfig.TimeBetweenStepsInSeconds,
 	}, nil
 }
 
-func RunLodgingStayJourney(ctx context.Context, machine *Machine, timeBetweenStepsInSeconds int) error {
-	if machine == nil {
-		return fmt.Errorf("failed to find RunLodgingStep in lodging machine")
+func RunLodgingStayFlow(ctx context.Context, flow *Flow, timeBetweenStepsInSeconds int) error {
+	if flow == nil {
+		return fmt.Errorf("failed to find RunLodgingStep in lodging flow")
 	}
 
 	var runLodgingStep steps.Step
-	for step := range machine.stateMap {
+	for step := range flow.stateMap {
 		if step != nil && step.Name() == "RunLodgingStep" {
 			runLodgingStep = step
 			break
 		}
 	}
 	if runLodgingStep == nil {
-		return fmt.Errorf("failed to find RunLodgingStep in lodging machine")
+		return fmt.Errorf("failed to find RunLodgingStep in lodging flow")
 	}
 
-	return runStepGraph(ctx, "LodgingStayFlow", noopStep{}, runLodgingStep, map[steps.Step][]domain.WeightedTuple[steps.Step]{
+	return runStepGraph(ctx, "LodgingStayFlow", steps.NewNoopStep(), runLodgingStep, map[steps.Step][]domain.WeightedTuple[steps.Step]{
 		runLodgingStep: nil,
 	}, timeBetweenStepsInSeconds)
 }

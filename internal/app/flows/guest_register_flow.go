@@ -1,4 +1,4 @@
-package machines
+package flows
 
 import (
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
@@ -10,17 +10,17 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func NewGuestRegisterMachineWithState(state *domain.State, machineConfig config.GuestRegisterMachineConfig, serviceConfig config.ServicesConfig, cache port.Cache) (*Machine, error) {
+func NewGuestRegisterFlowWithState(state *domain.State, flowConfig config.GuestRegisterFlowConfig, serviceConfig config.ServicesConfig, cache port.Cache) (*Flow, error) {
 	guestClient := http.NewRestyClient(serviceConfig.GuestManagerUrl, serviceConfig.GuestManagerPort)
-	return buildGuestRegisterMachine(state, guestClient, cache, machineConfig.TimeBetweenStepsInSeconds).machine, nil
+	return buildGuestRegisterFlow(state, guestClient, cache, flowConfig.TimeBetweenStepsInSeconds).flowRunner, nil
 }
 
-type guestRegisterMachineParts struct {
-	flow    config.GuestRegisterFlow
-	machine *Machine
+type guestRegisterFlowParts struct {
+	flow       config.GuestRegisterFlow
+	flowRunner *Flow
 }
 
-func buildGuestRegisterMachine(state *domain.State, guestClient *resty.Client, cache port.Cache, timeBetweenStepsInSeconds int) guestRegisterMachineParts {
+func buildGuestRegisterFlow(state *domain.State, guestClient *resty.Client, cache port.Cache, timeBetweenStepsInSeconds int) guestRegisterFlowParts {
 	registerGuestStates := map[string]steps.Step{
 		"End":           steps.NewEndStep(state),
 		"RegisterGuest": register_guest_step.NewRegisterGuestStep(guestClient, cache, state),
@@ -33,10 +33,10 @@ func buildGuestRegisterMachine(state *domain.State, guestClient *resty.Client, c
 		RetrieveGuest: registerGuestStates["RetrieveGuest"],
 	})
 
-	return guestRegisterMachineParts{
+	return guestRegisterFlowParts{
 		flow: flow,
-		machine: &Machine{
-			spanName:                  "GuestRegisterMachine",
+		flowRunner: &Flow{
+			spanName:                  "GuestRegisterFlow",
 			zeroStep:                  steps.NewInitStep(state),
 			firstStep:                 flow.Start,
 			stateMap:                  flow.StateMap(),

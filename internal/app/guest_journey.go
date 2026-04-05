@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/Kenji-Uema/guestSimulator/internal/app/machines"
+	"github.com/Kenji-Uema/guestSimulator/internal/app/flows"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/steps/journey_step"
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
@@ -18,33 +18,33 @@ import (
 type GuestJourney struct {
 	state                     *domain.State
 	cache                     port.Cache
-	guestRegisterMachine      *machines.Machine
-	bookingMachine            *machines.Machine
-	paymentMachine            *machines.Machine
-	lodgingMachine            *machines.Machine
+	guestRegisterFlow         *flows.Flow
+	bookingFlow               *flows.Flow
+	paymentFlow               *flows.Flow
+	lodgingFlow               *flows.Flow
 	steps                     journey_step.Steps
 	timeBetweenStepsInSeconds int
 }
 
-func NewGuestJourney(machineConfig config.GuestJourneyMachineConfig, state *domain.State,
-	guestRegisterMachine *machines.Machine, bookingMachine *machines.Machine, paymentMachine *machines.Machine, lodgingMachine *machines.Machine,
+func NewGuestJourney(flowConfig config.GuestJourneyFlowConfig, state *domain.State,
+	guestRegisterFlow *flows.Flow, bookingFlow *flows.Flow, paymentFlow *flows.Flow, lodgingFlow *flows.Flow,
 	rabbitConnection port.RabbitConnection, cache port.Cache) (*GuestJourney, error) {
 
 	communication := &journey_step.GuestCommunicationRuntime{}
 
-	if state == nil || guestRegisterMachine == nil || bookingMachine == nil || paymentMachine == nil || lodgingMachine == nil || rabbitConnection == nil || cache == nil {
+	if state == nil || guestRegisterFlow == nil || bookingFlow == nil || paymentFlow == nil || lodgingFlow == nil || rabbitConnection == nil || cache == nil {
 		return nil, fmt.Errorf("invalid guest journey dependencies")
 	}
 
 	return &GuestJourney{
 		state:                     state,
 		cache:                     cache,
-		guestRegisterMachine:      guestRegisterMachine,
-		bookingMachine:            bookingMachine,
-		paymentMachine:            paymentMachine,
-		lodgingMachine:            lodgingMachine,
+		guestRegisterFlow:         guestRegisterFlow,
+		bookingFlow:               bookingFlow,
+		paymentFlow:               paymentFlow,
+		lodgingFlow:               lodgingFlow,
 		steps:                     journey_step.NewSteps(state, cache, rabbitConnection, mq.ConsumerFactory{}, communication),
-		timeBetweenStepsInSeconds: machineConfig.TimeBetweenStepsInSeconds,
+		timeBetweenStepsInSeconds: flowConfig.TimeBetweenStepsInSeconds,
 	}, nil
 }
 
@@ -69,7 +69,7 @@ func (g *GuestJourney) Start(ctx context.Context) error {
 	ctx, span := telemetry.Tracer.Start(ctx, "GuestJourney")
 	defer span.End()
 
-	if err := g.guestRegisterMachine.Start(ctx); err != nil {
+	if err := g.guestRegisterFlow.Start(ctx); err != nil {
 		return err
 	}
 	if err := g.setupCommunication(ctx); err != nil {
@@ -114,7 +114,7 @@ func (g *GuestJourney) runBooking(ctx context.Context) error {
 	ctx, span := telemetry.Tracer.Start(ctx, "GuestJourneyBooking")
 	defer span.End()
 
-	if err := machines.RunBookingJourney(ctx, g.bookingMachine, g.timeBetweenStepsInSeconds); err != nil {
+	if err := flows.RunBookingFlow(ctx, g.bookingFlow, g.timeBetweenStepsInSeconds); err != nil {
 		return err
 	}
 	cacheValue, err := g.cache.Load(ctx, g.state)
@@ -151,10 +151,10 @@ func (g *GuestJourney) waitForPaymentRequest(ctx context.Context) error {
 }
 
 func (g *GuestJourney) runBookingPayment(ctx context.Context) error {
-	ctx, span := telemetry.Tracer.Start(ctx, "GuestJourneyPaymentMachine")
+	ctx, span := telemetry.Tracer.Start(ctx, "GuestJourneyPaymentFlow")
 	defer span.End()
 
-	if err := machines.RunPaymentJourney(ctx, g.paymentMachine, g.timeBetweenStepsInSeconds); err != nil {
+	if err := flows.RunPaymentFlow(ctx, g.paymentFlow, g.timeBetweenStepsInSeconds); err != nil {
 		return err
 	}
 	cacheValue, err := g.cache.Load(ctx, g.state)
@@ -197,7 +197,7 @@ func (g *GuestJourney) runLodgingStay(ctx context.Context) error {
 	ctx, span := telemetry.Tracer.Start(ctx, "GuestJourneyLodgingStay")
 	defer span.End()
 
-	return machines.RunLodgingStayJourney(ctx, g.lodgingMachine, g.timeBetweenStepsInSeconds)
+	return flows.RunLodgingStayFlow(ctx, g.lodgingFlow, g.timeBetweenStepsInSeconds)
 }
 
 func (g *GuestJourney) cleanupGuestJourney(ctx context.Context) error {

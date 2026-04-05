@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Kenji-Uema/guestSimulator/internal/app"
-	"github.com/Kenji-Uema/guestSimulator/internal/app/machines"
+	"github.com/Kenji-Uema/guestSimulator/internal/app/flows"
 	"github.com/Kenji-Uema/guestSimulator/internal/app/services"
 	"github.com/Kenji-Uema/guestSimulator/internal/config"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
@@ -25,7 +25,7 @@ import (
 const shutdownTimeout = 5 * time.Second
 
 type guestJourneyFactoryDeps struct {
-	machineConfig           config.MachinesConfig
+	flowConfig              config.FlowsConfig
 	servicesConfig          config.ServicesConfig
 	rabbitConnection        *mq.RabbitMqConnection
 	redisCache              *redisc.Cache
@@ -52,33 +52,33 @@ func runCleanup(ctx context.Context, cleanup []func(context.Context) error) erro
 func buildGuestJourney(deps guestJourneyFactoryDeps) (*app.GuestJourney, error) {
 	state := &domain.State{}
 
-	guestRegisterMachine, err := machines.NewGuestRegisterMachineWithState(state, deps.machineConfig.GuestRegister, deps.servicesConfig, deps.redisCache)
+	guestRegisterFlow, err := flows.NewGuestRegisterFlowWithState(state, deps.flowConfig.GuestRegister, deps.servicesConfig, deps.redisCache)
 	if err != nil {
 		return nil, err
 	}
 
-	bookingMachine, err := machines.NewBookingMachineWithState(state, deps.machineConfig.Booking, deps.servicesConfig, deps.redisCache)
+	bookingFlow, err := flows.NewBookingFlowWithState(state, deps.flowConfig.Booking, deps.servicesConfig, deps.redisCache)
 	if err != nil {
 		return nil, err
 	}
 
-	paymentMachine, err := machines.NewPaymentMachineWithState(state, deps.machineConfig.Payment, deps.servicesConfig, deps.redisCache)
+	paymentFlow, err := flows.NewPaymentFlowWithState(state, deps.flowConfig.Payment, deps.servicesConfig, deps.redisCache)
 	if err != nil {
 		return nil, err
 	}
 
-	lodgingMachine, err := machines.NewLodgingMachineWithState(state, deps.machineConfig.Lodging, deps.servicesConfig, deps.redisCache, deps.hourNotificationService)
+	lodgingFlow, err := flows.NewLodgingFlowWithState(state, deps.flowConfig.Lodging, deps.servicesConfig, deps.redisCache, deps.hourNotificationService)
 	if err != nil {
 		return nil, err
 	}
 
 	return app.NewGuestJourney(
-		deps.machineConfig.GuestJourney,
+		deps.flowConfig.GuestJourney,
 		state,
-		guestRegisterMachine,
-		bookingMachine,
-		paymentMachine,
-		lodgingMachine,
+		guestRegisterFlow,
+		bookingFlow,
+		paymentFlow,
+		lodgingFlow,
 		deps.rabbitConnection,
 		deps.redisCache,
 	)
@@ -91,7 +91,7 @@ func runJourneys(ctx context.Context, concurrencyLevel int, factory func() (*app
 		go func() {
 			journey, err := factory()
 			if err != nil {
-				slog.ErrorContext(ctx, "failed to create guest journey machine", "err", err)
+				slog.ErrorContext(ctx, "failed to create guest journey flow", "err", err)
 				finishNotification <- struct{}{}
 				return
 			}
@@ -173,9 +173,9 @@ func main() {
 	hourNotificationService := services.NewHourNotificationService(timeEventService)
 
 	started = true
-	runJourneys(ctx, configs.MachinesConfig.GuestJourney.ConcurrencyLevel, func() (*app.GuestJourney, error) {
+	runJourneys(ctx, configs.FlowsConfig.GuestJourney.ConcurrencyLevel, func() (*app.GuestJourney, error) {
 		return buildGuestJourney(guestJourneyFactoryDeps{
-			machineConfig:           configs.MachinesConfig,
+			flowConfig:              configs.FlowsConfig,
 			servicesConfig:          configs.ServicesConfig,
 			rabbitConnection:        rabbitmqInfra.Connection,
 			redisCache:              redisInfra.Client,
