@@ -120,6 +120,11 @@ func (b *GuestCommunicationBus) handleDelivery(ctx context.Context, delivery amq
 		if err := proto.Unmarshal(delivery.Body, &msg); err != nil {
 			return fmt.Errorf("unmarshal payment request: %w", err)
 		}
+		slog.InfoContext(ctx, "payment request message received",
+			"invoiceNumber", msg.GetInvoiceNumber(),
+			"payerEmail", msg.GetPayer().GetEmail(),
+			"cottageName", msg.GetBooking().GetCottageName(),
+			"routingKey", delivery.RoutingKey)
 		b.publishPaymentRequest(ctx, &msg)
 		return nil
 	case bookingConfirmationMessageType:
@@ -127,6 +132,11 @@ func (b *GuestCommunicationBus) handleDelivery(ctx context.Context, delivery amq
 		if err := proto.Unmarshal(delivery.Body, &msg); err != nil {
 			return fmt.Errorf("unmarshal booking confirmation: %w", err)
 		}
+		slog.InfoContext(ctx, "booking confirmation message received",
+			"bookingId", msg.GetBookingId(),
+			"guestId", msg.GetGuest().GetGuestId(),
+			"status", msg.GetBookingStatus().String(),
+			"routingKey", delivery.RoutingKey)
 		b.publishBookingConfirmation(ctx, &msg)
 		return nil
 	case checkinTomorrowMessageType:
@@ -134,6 +144,12 @@ func (b *GuestCommunicationBus) handleDelivery(ctx context.Context, delivery amq
 		if err := proto.Unmarshal(delivery.Body, &msg); err != nil {
 			return fmt.Errorf("unmarshal checkin tomorrow: %w", err)
 		}
+		slog.InfoContext(ctx, "checkin tomorrow message received",
+			"bookingId", msg.GetBookingId(),
+			"guestId", msg.GetGuestId(),
+			"cottageName", msg.GetCottageName(),
+			"checkIn", msg.GetCheckIn().AsTime().UTC(),
+			"routingKey", delivery.RoutingKey)
 		b.publishCheckinTomorrow(ctx, &msg)
 		return nil
 	default:
@@ -145,27 +161,58 @@ func (b *GuestCommunicationBus) publishPaymentRequest(ctx context.Context, msg *
 	b.paymentRequestMu.Lock()
 	defer b.paymentRequestMu.Unlock()
 
+	subscriberCount := len(b.paymentRequestChannels.Values())
 	if !notifyPaymentRequestSubscribers(ctx, b.paymentRequestChannels.Values(), msg) {
 		b.pendingPaymentRequests = append(b.pendingPaymentRequests, msg)
+		slog.InfoContext(ctx, "payment request queued for later processing",
+			"invoiceNumber", msg.GetInvoiceNumber(),
+			"pendingCount", len(b.pendingPaymentRequests),
+			"subscriberCount", subscriberCount)
+		return
 	}
+	slog.InfoContext(ctx, "payment request delivered to active subscriber",
+		"invoiceNumber", msg.GetInvoiceNumber(),
+		"subscriberCount", subscriberCount)
 }
 
 func (b *GuestCommunicationBus) publishBookingConfirmation(ctx context.Context, msg *communication.BookingConfirmedNotificationEvent) {
 	b.bookingConfirmationMu.Lock()
 	defer b.bookingConfirmationMu.Unlock()
 
+	subscriberCount := len(b.bookingConfirmationChannels.Values())
 	if !notifyBookingConfirmationSubscribers(ctx, b.bookingConfirmationChannels.Values(), msg) {
 		b.pendingBookingConfirmations = append(b.pendingBookingConfirmations, msg)
+		slog.InfoContext(ctx, "booking confirmation queued for later processing",
+			"bookingId", msg.GetBookingId(),
+			"guestId", msg.GetGuest().GetGuestId(),
+			"pendingCount", len(b.pendingBookingConfirmations),
+			"subscriberCount", subscriberCount)
+		return
 	}
+	slog.InfoContext(ctx, "booking confirmation delivered to active subscriber",
+		"bookingId", msg.GetBookingId(),
+		"guestId", msg.GetGuest().GetGuestId(),
+		"subscriberCount", subscriberCount)
 }
 
 func (b *GuestCommunicationBus) publishCheckinTomorrow(ctx context.Context, msg *communication.CheckInTomorrowNotification) {
 	b.checkinTomorrowMu.Lock()
 	defer b.checkinTomorrowMu.Unlock()
 
+	subscriberCount := len(b.checkinTomorrowChannels.Values())
 	if !notifyCheckinTomorrowSubscribers(ctx, b.checkinTomorrowChannels.Values(), msg) {
 		b.pendingCheckinTomorrow = append(b.pendingCheckinTomorrow, msg)
+		slog.InfoContext(ctx, "checkin tomorrow queued for later processing",
+			"bookingId", msg.GetBookingId(),
+			"guestId", msg.GetGuestId(),
+			"pendingCount", len(b.pendingCheckinTomorrow),
+			"subscriberCount", subscriberCount)
+		return
 	}
+	slog.InfoContext(ctx, "checkin tomorrow delivered to active subscriber",
+		"bookingId", msg.GetBookingId(),
+		"guestId", msg.GetGuestId(),
+		"subscriberCount", subscriberCount)
 }
 
 func notifyPaymentRequestSubscribers(ctx context.Context, channels []chan<- *communication.PaymentRequest, msg *communication.PaymentRequest) bool {

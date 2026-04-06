@@ -23,7 +23,7 @@ func NewBookingFlow(state *domain.State, serviceConfig config.ServicesConfig, ca
 	flowDef := config.DefaultBookingFlow(bookingSteps)
 
 	return &Flow{
-		spanName:  "BookingFlow",
+		spanName:  "GuestJourneyBookingFlow",
 		zeroStep:  steps.NewNoopStep(),
 		firstStep: flowDef.Start,
 		stateMap:  flowDef.StateMap(),

@@ -1,4 +1,4 @@
-IMAGE_TAG ?= 1.0.1
+IMAGE_TAG ?= 2.0.3
 
 build: generate
 	go build .

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto/communication"
@@ -18,6 +19,9 @@ func WaitBookingConfirmationMessage(ctx context.Context, state *domain.State, ca
 	for {
 		if msg, ok := takePendingBookingConfirmation(bus); ok {
 			if err := matchBookingConfirmation(ctx, state, cache, msg); err == nil {
+				slog.InfoContext(ctx, "booking confirmation matched from pending queue",
+					"bookingId", msg.GetBookingId(),
+					"guestId", msg.GetGuest().GetGuestId())
 				return nil
 			}
 		}
@@ -32,6 +36,9 @@ func WaitBookingConfirmationMessage(ctx context.Context, state *domain.State, ca
 			return fmt.Errorf("guest communication channel closed")
 		case msg := <-ch:
 			if err := matchBookingConfirmation(ctx, state, cache, msg); err == nil {
+				slog.InfoContext(ctx, "booking confirmation matched from subscriber channel",
+					"bookingId", msg.GetBookingId(),
+					"guestId", msg.GetGuest().GetGuestId())
 				return nil
 			}
 		}

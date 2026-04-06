@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
@@ -20,6 +21,9 @@ func WaitPaymentRequestMessage(ctx context.Context, state *domain.State, cache p
 	for {
 		if msg, ok := takePendingPaymentRequest(bus); ok {
 			if err := matchPaymentRequest(ctx, state, cache, msg); err == nil {
+				slog.InfoContext(ctx, "payment request matched from pending queue",
+					"invoiceNumber", msg.GetInvoiceNumber(),
+					"payerEmail", msg.GetPayer().GetEmail())
 				return nil
 			}
 		}
@@ -34,6 +38,9 @@ func WaitPaymentRequestMessage(ctx context.Context, state *domain.State, cache p
 			return fmt.Errorf("guest communication channel closed")
 		case msg := <-ch:
 			if err := matchPaymentRequest(ctx, state, cache, msg); err == nil {
+				slog.InfoContext(ctx, "payment request matched from subscriber channel",
+					"invoiceNumber", msg.GetInvoiceNumber(),
+					"payerEmail", msg.GetPayer().GetEmail())
 				return nil
 			}
 		}

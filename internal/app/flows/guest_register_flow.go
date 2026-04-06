@@ -20,7 +20,7 @@ func NewGuestRegisterFlowWithState(state *domain.State, serviceConfig config.Ser
 	flowDef := config.DefaultGuestRegisterFlow(registerSteps)
 
 	return &Flow{
-		spanName:  "GuestRegisterFlow",
+		spanName:  "GuestJourneyGuestRegisterFlow",
 		zeroStep:  steps.NewNoopStep(),
 		firstStep: flowDef.Start,
 		stateMap:  flowDef.StateMap(),

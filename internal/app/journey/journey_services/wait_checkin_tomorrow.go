@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/Kenji-Uema/guestSimulator/internal/domain"
 	"github.com/Kenji-Uema/guestSimulator/internal/domain/dto/communication"
@@ -18,6 +19,10 @@ func WaitCheckinTomorrowMessage(ctx context.Context, state *domain.State, cache 
 	for {
 		if msg, ok := takePendingCheckinTomorrow(bus); ok {
 			if err := matchCheckinTomorrow(ctx, state, cache, msg); err == nil {
+				slog.InfoContext(ctx, "checkin tomorrow matched from pending queue",
+					"bookingId", msg.GetBookingId(),
+					"guestId", msg.GetGuestId(),
+					"checkIn", msg.GetCheckIn().AsTime().UTC())
 				return nil
 			}
 		}
@@ -32,6 +37,10 @@ func WaitCheckinTomorrowMessage(ctx context.Context, state *domain.State, cache 
 			return fmt.Errorf("guest communication channel closed")
 		case msg := <-ch:
 			if err := matchCheckinTomorrow(ctx, state, cache, msg); err == nil {
+				slog.InfoContext(ctx, "checkin tomorrow matched from subscriber channel",
+					"bookingId", msg.GetBookingId(),
+					"guestId", msg.GetGuestId(),
+					"checkIn", msg.GetCheckIn().AsTime().UTC())
 				return nil
 			}
 		}

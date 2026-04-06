@@ -81,13 +81,17 @@ func (g *GuestJourney) Start(ctx context.Context) (err error) {
 	if err := g.bookingFlow.Start(ctx); err != nil {
 		return err
 	}
-	cacheValue, err := g.cache.Load(ctx, g.state)
+	bookingValidationCtx, bookingValidationSpan := telemetry.Tracer.Start(ctx, "GuestJourneyBookingValidation")
+	cacheValue, err := g.cache.Load(bookingValidationCtx, g.state)
 	if err != nil {
+		bookingValidationSpan.End()
 		return err
 	}
 	if cacheValue.Booking == nil || cacheValue.Booking.BookingID == "" {
+		bookingValidationSpan.End()
 		return fmt.Errorf("booking flow finished without bookingId")
 	}
+	bookingValidationSpan.End()
 
 	paymentWaitCtx, paymentWaitSpan := telemetry.Tracer.Start(ctx, "GuestJourneyPaymentWait")
 	if err := g.cacheService.SyncStateCache(paymentWaitCtx, g.state, "UpdateBookingCacheStep"); err != nil {

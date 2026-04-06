@@ -21,7 +21,7 @@ func NewPaymentFlowWithState(state *domain.State, serviceConfig config.ServicesC
 	})
 
 	return &Flow{
-		spanName:  "PaymentFlow",
+		spanName:  "GuestJourneyPaymentFlowSteps",
 		zeroStep:  steps.NewNoopStep(),
 		firstStep: flow.Start,
 		stateMap:  flow.StateMap(),

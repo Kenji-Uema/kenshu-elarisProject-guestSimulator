@@ -31,7 +31,7 @@ func NewLodgingFlowWithState(state *domain.State, serviceConfig config.ServicesC
 
 	return &LodgingFlow{
 		Flow: &Flow{
-			spanName:  "LodgingFlow",
+			spanName:  "GuestJourneyLodgingFlow",
 			zeroStep:  steps.NewNoopStep(),
 			firstStep: runStep,
 			stateMap: map[steps.Step][]domain.WeightedTuple[steps.Step]{
@@ -47,7 +47,7 @@ func RunLodgingStayFlow(ctx context.Context, flow *LodgingFlow) error {
 		return fmt.Errorf("failed to find RunLodgingStep in lodging flow")
 	}
 
-	return runStepGraph(ctx, "LodgingStayFlow", steps.NewNoopStep(), flow.RunLodgingStep, map[steps.Step][]domain.WeightedTuple[steps.Step]{
+	return runStepGraph(ctx, "GuestJourneyLodgingStayFlow", steps.NewNoopStep(), flow.RunLodgingStep, map[steps.Step][]domain.WeightedTuple[steps.Step]{
 		flow.RunLodgingStep: nil,
 	})
 }

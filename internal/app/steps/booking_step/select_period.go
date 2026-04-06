@@ -21,6 +21,7 @@ var numberOfNights = []int{3, 5, 7, 10, 14}
 var searchWindows = []int{3, 5, 7, 10, 14, 21, 30}
 
 const maxPeriodAttempts = 5
+const minSearchLeadDays = 5
 
 var ErrNoSuitablePeriod = errors.New("no suitable period found")
 
@@ -153,8 +154,8 @@ func (s SelectPeriodStep) collectStayCandidates(ctx context.Context, now time.Ti
 }
 
 func (s SelectPeriodStep) loadAvailablePeriods(ctx context.Context, cottageName string, now time.Time, windowDays int) ([]booking.Period, error) {
-	from := now
-	to := now.AddDate(0, 0, windowDays)
+	from := startOfUTCDay(now).AddDate(0, 0, minSearchLeadDays)
+	to := from.AddDate(0, 0, windowDays)
 
 	resp, err := s.client.R().
 		SetContext(ctx).
@@ -180,7 +181,7 @@ func pickNearestSuitablePeriod(now time.Time, availablePeriods []booking.Period,
 	var selected *booking.Period
 	var selectedDistance time.Duration
 
-	searchStart := startOfUTCDay(now).AddDate(0, 0, 1)
+	searchStart := startOfUTCDay(now).AddDate(0, 0, minSearchLeadDays)
 
 	for _, period := range availablePeriods {
 		candidateStart := startOfUTCDay(period.Start)
