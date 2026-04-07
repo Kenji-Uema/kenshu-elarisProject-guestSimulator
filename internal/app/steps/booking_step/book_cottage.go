@@ -57,6 +57,9 @@ func (s BookCottageStep) Execute(ctx context.Context) error {
 	if cacheValue.Booking == nil || cacheValue.Booking.SelectedCottage == "" || cacheValue.Booking.SelectedPeriod == nil {
 		return fmt.Errorf("invalid cached booking context")
 	}
+	if cacheValue.Booking.BookingID != "" {
+		return fmt.Errorf("booking already created for this journey: %s", cacheValue.Booking.BookingID)
+	}
 
 	guest := cacheValue.PersonalInfo
 	selected := cacheValue.Booking

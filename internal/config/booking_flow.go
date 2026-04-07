@@ -54,10 +54,7 @@ func DefaultBookingFlow(flow BookingSteps) BookingFlow {
 				{Value: flow.End, Weight: 0.05},
 			},
 			BookCottageTransitions: []domain.WeightedTuple[steps.Step]{
-				{Value: flow.SelectPeriod, Weight: 0.05},
-				{Value: flow.SelectCottage, Weight: 0.05},
-				{Value: flow.ListCottages, Weight: 0.05},
-				{Value: flow.End, Weight: 0.85},
+				{Value: flow.End, Weight: 1.0},
 			},
 		},
 	}

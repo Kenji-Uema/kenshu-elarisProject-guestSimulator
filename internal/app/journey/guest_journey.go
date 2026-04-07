@@ -2,6 +2,7 @@ package journey
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -60,12 +61,8 @@ func (g *GuestJourney) Start(ctx context.Context) (err error) {
 			return
 		}
 
-		if g.communication != nil && g.communication.Consumer != nil {
-			_ = journey_services.CloseCommunication(ctx, g.state, g.communication)
-			return
-		}
-		if g.rabbitConsumer != nil {
-			_ = g.rabbitConsumer.CloseChannel()
+		if cleanupErr := g.cleanupGuestJourney(ctx); cleanupErr != nil {
+			err = errors.Join(err, cleanupErr)
 		}
 	}()
 
