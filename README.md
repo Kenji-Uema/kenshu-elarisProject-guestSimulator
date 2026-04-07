@@ -1,112 +1,97 @@
 # guestSimulator
 
-Drives guest-side simulations for registration, booking, payment, and lodging.
+Runs the end-to-end guest journey: registration, booking, payment, and lodging.
 
-## Responsibilities
+## What It Does
 
-- simulate guest registration
-- simulate cottage booking
-- simulate payment completion through `paymentSimulator`
-- drive the guest counterpart of the lodging WebSocket flow
-- react to hour-change events from RabbitMQ
+- creates simulated guest identities and initializes per-guest state in Redis
+- registers the guest in `guestManager`
+- books a cottage through `cottageManager`
+- sets up and consumes the per-guest RabbitMQ communication queue
+- pays invoices through `paymentSimulator`
+- drives the lodging WebSocket counterpart of `guestManager`
 
-## Interfaces
+## Dependencies And Integrations
 
-- HTTP clients to guest and cottage services
-- gRPC client to `clockSimulator`
-- HTTP client to `paymentSimulator`
+- HTTP clients to `guestManager`, `cottageManager`, and `paymentSimulator`
 - WebSocket client to `guestManager`
-- RabbitMQ consumer for hour-change notifications
-- Redis connectivity for readiness and runtime infra checks
+- RabbitMQ consumers for guest communication and time events
+- Redis for cached journey state
+- gRPC client to `clockSimulator`
 
-## Run
+## Local Commands
 
 ```sh
 go run ./internal
+go build ./internal
+make generate
+make docker-build
 ```
 
-## Build
+There is no dedicated `make test` target in this module at the moment.
+
+## Minimum Env To Start
+
+Optional vars with defaults, such as `SERVICE_NAME`, graph-file paths, Redis DB, and timeout values, are omitted here.
 
 ```sh
-make build
-make docker-build
+PROBE_HTTP_ADDRESS=0.0.0.0
+PROBE_HTTP_PORT=8080
+
+RABBITMQ_USERNAME=<rabbit user>
+RABBITMQ_PASSWORD=<rabbit password>
+RABBITMQ_HOST=<rabbit host>
+RABBITMQ_PORT=5672
+
+REDIS_HOST=<redis host>
+REDIS_PORT=6379
+
+CLOCK_EMU_GRPC_URL=<clock host>
+CLOCK_EMU_GRPC_PORT=50051
+COTTAGE_MANAGER_URL=<cottage-manager host>
+COTTAGE_MANAGER_PORT=8080
+GUEST_MANAGER_URL=<guest-manager host>
+GUEST_MANAGER_PORT=8080
+PAYMENT_SIMULATOR_URL=<payment-simulator host>
+PAYMENT_SIMULATOR_PORT=8080
+
+HOUR_CHANGE_QUEUE_NAME=q.guest-simulator.hour-change
+HOUR_CHANGE_BINDING_EXCHANGE_NAME=ex.time.event
+HOUR_CHANGE_BINDING_ROUTING_KEY=time.event.hour
+
+COMMUNICATION_BINDING_EXCHANGE_NAME=ex.communication
+
+BOOKING_FLOW_CONCURRENCY_LEVEL=2
+LODGING_FLOW_CONCURRENCY_LEVEL=2
+PAYMENT_FLOW_CONCURRENCY_LEVEL=2
+GUEST_REGISTER_FLOW_CONCURRENCY_LEVEL=2
+GUEST_JOURNEY_FLOW_CONCURRENCY_LEVEL=2
+
+OTEL_EXPORTER_OTLP_ENDPOINT=<otel host>
+OTEL_EXPORTER_OTLP_GRPC_PORT=4317
+OTEL_EXPORTER_OTLP_HEALTH_PORT=13133
+OTEL_EXPORTER_OTLP_INSECURE=true
 ```
 
 ## Configuration
 
-Configuration is environment-driven. See:
+Configuration is environment-driven. Start with:
 
 - `internal/config/config.go`
 
-Important families:
+Important groups:
 
 - probe HTTP: `PROBE_HTTP_*`
-- service endpoints: `CLOCK_EMU_*`, `COTTAGE_MANAGER_*`, `GUEST_MANAGER_*`, `PAYMENT_SIMULATOR_*`
-- RabbitMQ: `RABBITMQ_*`, `TIME_EVENT_QUEUE_*`, `TIME_EVENT_BINDING_*`, `TIME_EVENT_CONSUME_*`
+- downstream services: `CLOCK_EMU_*`, `COTTAGE_MANAGER_*`, `GUEST_MANAGER_*`, `PAYMENT_SIMULATOR_*`
+- RabbitMQ connection plus consumer settings: `RABBITMQ_*`, guest communication, time-event
 - Redis: `REDIS_*`
-- flow control: `BOOKING_FLOW_*`, `GUEST_REGISTER_*`, `LODGING_FLOW_*`, `PAYMENT_FLOW_*`, `GUEST_JOURNEY_FLOW_*`
+- flow tuning: `BOOKING_FLOW_*`, `GUEST_REGISTER_*`, `LODGING_FLOW_*`, `PAYMENT_FLOW_*`, `GUEST_JOURNEY_*`
 - telemetry: `OTEL_EXPORTER_OTLP_*`
 
-## Docs
-
-State and flow diagrams live in `docs/`.
-
-## Entry points
+## Key Files
 
 - `internal/main.go`
-- `internal/main.go`
-- `internal/app/guest_journey.go`
+- `internal/app/journey/guest_journey.go`
 - `internal/app/flows/`
-
-
-SERVICE_NAME=guest-simulator;
-VERSION=latest;
-PROBE_HTTP_ADDRESS=0.0.0.0;
-PROBE_HTTP_PORT=8080;
-READ_HEADER_TIMEOUT_IN_SECONDS=5;
-READ_TIMEOUT_IN_SECONDS=10;
-WRITE_TIMEOUT_IN_SECONDS=15;
-IDLE_TIMEOUT_IN_SECONDS=60;
-RABBITMQ_USERNAME=guest;
-RABBITMQ_PASSWORD=guest;
-RABBITMQ_HOST=localhost;
-RABBITMQ_PORT=30002;
-TIME_EVENT_QUEUE_NAME=q.guest-simulator.hour-change;
-TIME_EVENT_BINDING_EXCHANGE_NAME=ex.time.event;
-TIME_EVENT_BINDING_ROUTING_KEY=;
-REDIS_HOST=localhost;
-REDIS_PORT=30012;
-REDIS_DB=0;
-CLOCK_EMU_GRPC_URL=localhost;
-CLOCK_EMU_GRPC_PORT=30009;
-COTTAGE_MANAGER_URL=localhost;
-COTTAGE_MANAGER_PORT=30011;
-GUEST_MANAGER_URL=localhost;
-GUEST_MANAGER_PORT=30010;
-PAYMENT_SIMULATOR_URL=localhost;
-PAYMENT_SIMULATOR_PORT=30013;
-BOOKING_FLOW_CONCURRENCY_LEVEL=1;
-BOOKING_FLOW_TIME_BETWEEN_STEPS_IN_SECONDS=2;
-LODGING_FLOW_CONCURRENCY_LEVEL=1;
-LODGING_FLOW_TIME_BETWEEN_STEPS_IN_SECONDS=2;
-GUEST_REGISTER_FLOW_CONCURRENCY_LEVEL=1;
-GUEST_REGISTER_TIME_BETWEEN_STEPS_IN_SECONDS=2;
-PAYMENT_FLOW_CONCURRENCY_LEVEL=1;
-PAYMENT_FLOW_TIME_BETWEEN_STEPS_IN_SECONDS=2;
-GUEST_JOURNEY_FLOW_CONCURRENCY_LEVEL=1;
-GUEST_JOURNEY_TIME_BETWEEN_STEPS_IN_SECONDS=2;
-OTEL_EXPORTER_OTLP_ENDPOINT=localhost;
-OTEL_EXPORTER_OTLP_GRPC_PORT=30007;
-OTEL_EXPORTER_OTLP_HEALTH_PORT=30008;
-OTEL_EXPORTER_OTLP_INSECURE=true;
-
-
-
-BOOKING_FLOW_CONCURRENCY_LEVEL=1;BOOKING_FLOW_TIME_BETWEEN_STEPS_IN_SECONDS=2;
-CLOCK_EMU_GRPC_HOST=localhost;CLOCK_EMU_GRPC_PORT=30009;CLOCK_EMU_GRPC_URL=localhost;
-COTTAGE_MANAGER_PORT=30011;COTTAGE_MANAGER_URL=localhost;GUEST_MANAGER_PORT=30010;
-GUEST_MANAGER_URL=localhost;GUEST_REGISTER_FLOW_CONCURRENCY_LEVEL=1;
-GUEST_REGISTER_TIME_BETWEEN_STEPS_IN_SECONDS=2;OTEL_EXPORTER_OTLP_ENDPOINT=localhost;
-OTEL_EXPORTER_OTLP_GRPC_PORT=30007;OTEL_EXPORTER_OTLP_HEALTH_PORT=30008;OTEL_EXPORTER_OTLP_INSECURE=true;
-PROBE_HTTP_ADDRESS=localhost;PROBE_HTTP_PORT=8080;RABBITMQ_CONFIRM_NOT_WAIT=false;SERVICE_HOST=localhost;
-SERVICE_NAME=guestEmulator;SERVICE_PORT=8080;VERSION=dev
+- `internal/app/steps/lodging_step/`
+- `internal/config/`
