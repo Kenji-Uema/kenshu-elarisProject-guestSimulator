@@ -24,9 +24,9 @@ type GuestCommunicationBus struct {
 	bookingConfirmationChannels *domain.Set[chan<- *communication.BookingConfirmedNotificationEvent]
 	pendingBookingConfirmations []*communication.BookingConfirmedNotificationEvent
 
-	checkinTomorrowMu       sync.RWMutex
-	checkinTomorrowChannels *domain.Set[chan<- *communication.CheckInTomorrowNotification]
-	pendingCheckinTomorrow  []*communication.CheckInTomorrowNotification
+	checkinTodayMu       sync.RWMutex
+	checkinTodayChannels *domain.Set[chan<- *communication.CheckInTodayNotification]
+	pendingCheckinToday  []*communication.CheckInTodayNotification
 
 	lifecycleMu sync.RWMutex
 	done        chan struct{}
@@ -37,7 +37,7 @@ func NewGuestCommunicationBus() *GuestCommunicationBus {
 	return &GuestCommunicationBus{
 		paymentRequestChannels:      domain.NewSet[chan<- *communication.PaymentRequest](),
 		bookingConfirmationChannels: domain.NewSet[chan<- *communication.BookingConfirmedNotificationEvent](),
-		checkinTomorrowChannels:     domain.NewSet[chan<- *communication.CheckInTomorrowNotification](),
+		checkinTodayChannels:        domain.NewSet[chan<- *communication.CheckInTodayNotification](),
 		done:                        make(chan struct{}),
 	}
 }
@@ -102,10 +102,10 @@ func (b *GuestCommunicationBus) Reset() {
 	b.bookingConfirmationChannels = domain.NewSet[chan<- *communication.BookingConfirmedNotificationEvent]()
 	b.bookingConfirmationMu.Unlock()
 
-	b.checkinTomorrowMu.Lock()
-	b.pendingCheckinTomorrow = nil
-	b.checkinTomorrowChannels = domain.NewSet[chan<- *communication.CheckInTomorrowNotification]()
-	b.checkinTomorrowMu.Unlock()
+	b.checkinTodayMu.Lock()
+	b.pendingCheckinToday = nil
+	b.checkinTodayChannels = domain.NewSet[chan<- *communication.CheckInTodayNotification]()
+	b.checkinTodayMu.Unlock()
 
 	b.lifecycleMu.Lock()
 	b.err = nil
@@ -139,18 +139,18 @@ func (b *GuestCommunicationBus) handleDelivery(ctx context.Context, delivery amq
 			"routingKey", delivery.RoutingKey)
 		b.publishBookingConfirmation(ctx, &msg)
 		return nil
-	case checkinTomorrowMessageType:
-		var msg communication.CheckInTomorrowNotification
+	case checkinTodayMessageType:
+		var msg communication.CheckInTodayNotification
 		if err := proto.Unmarshal(delivery.Body, &msg); err != nil {
-			return fmt.Errorf("unmarshal checkin tomorrow: %w", err)
+			return fmt.Errorf("unmarshal checkin today: %w", err)
 		}
-		slog.InfoContext(ctx, "checkin tomorrow message received",
+		slog.InfoContext(ctx, "checkin today message received",
 			"bookingId", msg.GetBookingId(),
 			"guestId", msg.GetGuestId(),
 			"cottageName", msg.GetCottageName(),
 			"checkIn", msg.GetCheckIn().AsTime().UTC(),
 			"routingKey", delivery.RoutingKey)
-		b.publishCheckinTomorrow(ctx, &msg)
+		b.publishCheckinToday(ctx, &msg)
 		return nil
 	default:
 		return fmt.Errorf("unsupported message_type %q", deliveryHeader(delivery, "message_type"))
@@ -195,21 +195,21 @@ func (b *GuestCommunicationBus) publishBookingConfirmation(ctx context.Context, 
 		"subscriberCount", subscriberCount)
 }
 
-func (b *GuestCommunicationBus) publishCheckinTomorrow(ctx context.Context, msg *communication.CheckInTomorrowNotification) {
-	b.checkinTomorrowMu.Lock()
-	defer b.checkinTomorrowMu.Unlock()
+func (b *GuestCommunicationBus) publishCheckinToday(ctx context.Context, msg *communication.CheckInTodayNotification) {
+	b.checkinTodayMu.Lock()
+	defer b.checkinTodayMu.Unlock()
 
-	subscriberCount := len(b.checkinTomorrowChannels.Values())
-	if !notifyCheckinTomorrowSubscribers(ctx, b.checkinTomorrowChannels.Values(), msg) {
-		b.pendingCheckinTomorrow = append(b.pendingCheckinTomorrow, msg)
-		slog.InfoContext(ctx, "checkin tomorrow queued for later processing",
+	subscriberCount := len(b.checkinTodayChannels.Values())
+	if !notifyCheckinTodaySubscribers(ctx, b.checkinTodayChannels.Values(), msg) {
+		b.pendingCheckinToday = append(b.pendingCheckinToday, msg)
+		slog.InfoContext(ctx, "checkin today queued for later processing",
 			"bookingId", msg.GetBookingId(),
 			"guestId", msg.GetGuestId(),
-			"pendingCount", len(b.pendingCheckinTomorrow),
+			"pendingCount", len(b.pendingCheckinToday),
 			"subscriberCount", subscriberCount)
 		return
 	}
-	slog.InfoContext(ctx, "checkin tomorrow delivered to active subscriber",
+	slog.InfoContext(ctx, "checkin today delivered to active subscriber",
 		"bookingId", msg.GetBookingId(),
 		"guestId", msg.GetGuestId(),
 		"subscriberCount", subscriberCount)
@@ -245,15 +245,15 @@ func notifyBookingConfirmationSubscribers(ctx context.Context, channels []chan<-
 	return delivered
 }
 
-func notifyCheckinTomorrowSubscribers(ctx context.Context, channels []chan<- *communication.CheckInTomorrowNotification, msg *communication.CheckInTomorrowNotification) bool {
+func notifyCheckinTodaySubscribers(ctx context.Context, channels []chan<- *communication.CheckInTodayNotification, msg *communication.CheckInTodayNotification) bool {
 	delivered := false
 	for _, ch := range channels {
 		select {
 		case ch <- msg:
 			delivered = true
-			slog.DebugContext(ctx, "published guest communication event to subscriber", "event", "checkin tomorrow")
+			slog.DebugContext(ctx, "published guest communication event to subscriber", "event", "checkin today")
 		default:
-			slog.WarnContext(ctx, "guest communication subscriber is busy", "event", "checkin tomorrow")
+			slog.WarnContext(ctx, "guest communication subscriber is busy", "event", "checkin today")
 		}
 	}
 

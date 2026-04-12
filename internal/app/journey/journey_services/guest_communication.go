@@ -18,7 +18,7 @@ const (
 
 	paymentRequestMessageType      = "paymentSimulator.payment.v1.PaymentRequest"
 	bookingConfirmationMessageType = "cottageManager.invoice.BookingConfirmedNotificationEvent"
-	checkinTomorrowMessageType     = "lodging.v1.CheckInTomorrowNotification"
+	checkinTodayMessageType        = "lodging.v1.CheckInTodayNotification"
 )
 
 func SetupCommunication(ctx context.Context, state *domain.State, consumer port.RabbitConsumer, cfg config.RabbitMqConsumerConfig, bus *GuestCommunicationBus) error {

@@ -120,7 +120,7 @@ func (g *GuestJourney) Start(ctx context.Context) (err error) {
 	bookingConfirmSpan.End()
 
 	checkinWaitCtx, checkinWaitSpan := telemetry.Tracer.Start(ctx, "GuestJourneyLodgingPreparation")
-	if err := journey_services.WaitCheckinTomorrowMessage(checkinWaitCtx, g.state, g.cache, g.communication); err != nil {
+	if err := journey_services.WaitCheckinTodayMessage(checkinWaitCtx, g.state, g.cache, g.communication); err != nil {
 		checkinWaitSpan.End()
 		return err
 	}

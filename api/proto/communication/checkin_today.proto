@@ -5,7 +5,7 @@ option go_package = "github.com/Kenji-Uema/guestSimulator/internal/domain/dto/co
 
 import "google/protobuf/timestamp.proto";
 
-message CheckInTomorrowNotification {
+message CheckInTodayNotification {
   string booking_id = 1;
   string guest_id = 2;
   string cottage_name = 3;

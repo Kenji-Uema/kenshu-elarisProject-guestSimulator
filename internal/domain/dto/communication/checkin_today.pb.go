@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        (unknown)
-// source: communication/checkin_tomorrow.proto
+// source: communication/checkin_today.proto
 
 package communication
 
@@ -22,7 +22,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type CheckInTomorrowNotification struct {
+type CheckInTodayNotification struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	BookingId       string                 `protobuf:"bytes,1,opt,name=booking_id,json=bookingId,proto3" json:"booking_id,omitempty"`
 	GuestId         string                 `protobuf:"bytes,2,opt,name=guest_id,json=guestId,proto3" json:"guest_id,omitempty"`
@@ -35,21 +35,21 @@ type CheckInTomorrowNotification struct {
 	sizeCache       protoimpl.SizeCache
 }
 
-func (x *CheckInTomorrowNotification) Reset() {
-	*x = CheckInTomorrowNotification{}
-	mi := &file_communication_checkin_tomorrow_proto_msgTypes[0]
+func (x *CheckInTodayNotification) Reset() {
+	*x = CheckInTodayNotification{}
+	mi := &file_communication_checkin_today_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CheckInTomorrowNotification) String() string {
+func (x *CheckInTodayNotification) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CheckInTomorrowNotification) ProtoMessage() {}
+func (*CheckInTodayNotification) ProtoMessage() {}
 
-func (x *CheckInTomorrowNotification) ProtoReflect() protoreflect.Message {
-	mi := &file_communication_checkin_tomorrow_proto_msgTypes[0]
+func (x *CheckInTodayNotification) ProtoReflect() protoreflect.Message {
+	mi := &file_communication_checkin_today_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -60,67 +60,67 @@ func (x *CheckInTomorrowNotification) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CheckInTomorrowNotification.ProtoReflect.Descriptor instead.
-func (*CheckInTomorrowNotification) Descriptor() ([]byte, []int) {
-	return file_communication_checkin_tomorrow_proto_rawDescGZIP(), []int{0}
+// Deprecated: Use CheckInTodayNotification.ProtoReflect.Descriptor instead.
+func (*CheckInTodayNotification) Descriptor() ([]byte, []int) {
+	return file_communication_checkin_today_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *CheckInTomorrowNotification) GetBookingId() string {
+func (x *CheckInTodayNotification) GetBookingId() string {
 	if x != nil {
 		return x.BookingId
 	}
 	return ""
 }
 
-func (x *CheckInTomorrowNotification) GetGuestId() string {
+func (x *CheckInTodayNotification) GetGuestId() string {
 	if x != nil {
 		return x.GuestId
 	}
 	return ""
 }
 
-func (x *CheckInTomorrowNotification) GetCottageName() string {
+func (x *CheckInTodayNotification) GetCottageName() string {
 	if x != nil {
 		return x.CottageName
 	}
 	return ""
 }
 
-func (x *CheckInTomorrowNotification) GetCheckIn() *timestamppb.Timestamp {
+func (x *CheckInTodayNotification) GetCheckIn() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CheckIn
 	}
 	return nil
 }
 
-func (x *CheckInTomorrowNotification) GetCheckOut() *timestamppb.Timestamp {
+func (x *CheckInTodayNotification) GetCheckOut() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CheckOut
 	}
 	return nil
 }
 
-func (x *CheckInTomorrowNotification) GetNumberOfGuests() int32 {
+func (x *CheckInTodayNotification) GetNumberOfGuests() int32 {
 	if x != nil {
 		return x.NumberOfGuests
 	}
 	return 0
 }
 
-func (x *CheckInTomorrowNotification) GetNotificationDay() *timestamppb.Timestamp {
+func (x *CheckInTodayNotification) GetNotificationDay() *timestamppb.Timestamp {
 	if x != nil {
 		return x.NotificationDay
 	}
 	return nil
 }
 
-var File_communication_checkin_tomorrow_proto protoreflect.FileDescriptor
+var File_communication_checkin_today_proto protoreflect.FileDescriptor
 
-const file_communication_checkin_tomorrow_proto_rawDesc = "" +
+const file_communication_checkin_today_proto_rawDesc = "" +
 	"\n" +
-	"$communication/checkin_tomorrow.proto\x12\n" +
-	"lodging.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xdb\x02\n" +
-	"\x1bCheckInTomorrowNotification\x12\x1d\n" +
+	"!communication/checkin_today.proto\x12\n" +
+	"lodging.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd8\x02\n" +
+	"\x18CheckInTodayNotification\x12\x1d\n" +
 	"\n" +
 	"booking_id\x18\x01 \x01(\tR\tbookingId\x12\x19\n" +
 	"\bguest_id\x18\x02 \x01(\tR\aguestId\x12!\n" +
@@ -131,26 +131,26 @@ const file_communication_checkin_tomorrow_proto_rawDesc = "" +
 	"\x10notification_day\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x0fnotificationDayBVZTgithub.com/Kenji-Uema/guestSimulator/internal/domain/dto/communication;communicationb\x06proto3"
 
 var (
-	file_communication_checkin_tomorrow_proto_rawDescOnce sync.Once
-	file_communication_checkin_tomorrow_proto_rawDescData []byte
+	file_communication_checkin_today_proto_rawDescOnce sync.Once
+	file_communication_checkin_today_proto_rawDescData []byte
 )
 
-func file_communication_checkin_tomorrow_proto_rawDescGZIP() []byte {
-	file_communication_checkin_tomorrow_proto_rawDescOnce.Do(func() {
-		file_communication_checkin_tomorrow_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_communication_checkin_tomorrow_proto_rawDesc), len(file_communication_checkin_tomorrow_proto_rawDesc)))
+func file_communication_checkin_today_proto_rawDescGZIP() []byte {
+	file_communication_checkin_today_proto_rawDescOnce.Do(func() {
+		file_communication_checkin_today_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_communication_checkin_today_proto_rawDesc), len(file_communication_checkin_today_proto_rawDesc)))
 	})
-	return file_communication_checkin_tomorrow_proto_rawDescData
+	return file_communication_checkin_today_proto_rawDescData
 }
 
-var file_communication_checkin_tomorrow_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_communication_checkin_tomorrow_proto_goTypes = []any{
-	(*CheckInTomorrowNotification)(nil), // 0: lodging.v1.CheckInTomorrowNotification
-	(*timestamppb.Timestamp)(nil),       // 1: google.protobuf.Timestamp
+var file_communication_checkin_today_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_communication_checkin_today_proto_goTypes = []any{
+	(*CheckInTodayNotification)(nil), // 0: lodging.v1.CheckInTodayNotification
+	(*timestamppb.Timestamp)(nil),    // 1: google.protobuf.Timestamp
 }
-var file_communication_checkin_tomorrow_proto_depIdxs = []int32{
-	1, // 0: lodging.v1.CheckInTomorrowNotification.check_in:type_name -> google.protobuf.Timestamp
-	1, // 1: lodging.v1.CheckInTomorrowNotification.check_out:type_name -> google.protobuf.Timestamp
-	1, // 2: lodging.v1.CheckInTomorrowNotification.notification_day:type_name -> google.protobuf.Timestamp
+var file_communication_checkin_today_proto_depIdxs = []int32{
+	1, // 0: lodging.v1.CheckInTodayNotification.check_in:type_name -> google.protobuf.Timestamp
+	1, // 1: lodging.v1.CheckInTodayNotification.check_out:type_name -> google.protobuf.Timestamp
+	1, // 2: lodging.v1.CheckInTodayNotification.notification_day:type_name -> google.protobuf.Timestamp
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
@@ -158,26 +158,26 @@ var file_communication_checkin_tomorrow_proto_depIdxs = []int32{
 	0, // [0:3] is the sub-list for field type_name
 }
 
-func init() { file_communication_checkin_tomorrow_proto_init() }
-func file_communication_checkin_tomorrow_proto_init() {
-	if File_communication_checkin_tomorrow_proto != nil {
+func init() { file_communication_checkin_today_proto_init() }
+func file_communication_checkin_today_proto_init() {
+	if File_communication_checkin_today_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_communication_checkin_tomorrow_proto_rawDesc), len(file_communication_checkin_tomorrow_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_communication_checkin_today_proto_rawDesc), len(file_communication_checkin_today_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_communication_checkin_tomorrow_proto_goTypes,
-		DependencyIndexes: file_communication_checkin_tomorrow_proto_depIdxs,
-		MessageInfos:      file_communication_checkin_tomorrow_proto_msgTypes,
+		GoTypes:           file_communication_checkin_today_proto_goTypes,
+		DependencyIndexes: file_communication_checkin_today_proto_depIdxs,
+		MessageInfos:      file_communication_checkin_today_proto_msgTypes,
 	}.Build()
-	File_communication_checkin_tomorrow_proto = out.File
-	file_communication_checkin_tomorrow_proto_goTypes = nil
-	file_communication_checkin_tomorrow_proto_depIdxs = nil
+	File_communication_checkin_today_proto = out.File
+	file_communication_checkin_today_proto_goTypes = nil
+	file_communication_checkin_today_proto_depIdxs = nil
 }
