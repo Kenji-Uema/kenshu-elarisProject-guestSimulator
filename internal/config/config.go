@@ -29,8 +29,9 @@ type AppConfig struct {
 }
 
 type NameConfig struct {
-	ServiceName string `env:"SERVICE_NAME"`
-	Version     string `env:"VERSION"`
+	ServiceName      string `env:"SERVICE_NAME" envDefault:"guestSimulator"`
+	Version          string `env:"VERSION" envDefault:"latest"`
+	ServiceNamespace string `env:"SERVICE_NAMESPACE" envDefault:"unknown"`
 }
 
 type ProbeConfig struct {

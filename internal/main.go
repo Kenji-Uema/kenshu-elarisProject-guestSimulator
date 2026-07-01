@@ -128,7 +128,6 @@ func runJourneys(ctx context.Context, concurrencyLevel int, factory func() (*jou
 }
 
 func main() {
-	slog.SetDefault(log.NewLogger())
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	cleanup := make([]func(context.Context) error, 0, 4)
@@ -148,6 +147,8 @@ func main() {
 
 	configs, err := config.LoadConfigs()
 	exitOnError(ctx, "failed to load configs", err)
+
+	slog.SetDefault(log.NewLogger(configs.AppConfig))
 
 	shutdownTelemetry, err := telemetry.Init(ctx, telemetry.Config{
 		Endpoint: configs.AppConfig.Telemetry.OTLPEndpoint,
