@@ -25,6 +25,33 @@ func TestSetupCommunicationRejectsInvalidDependencies(t *testing.T) {
 	}
 }
 
+func TestSetupCommunicationDeclaresExclusiveGuestQueue(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	bus := NewGuestCommunicationBus()
+	consumer := &mqfakes.Consumer{Deliveries: make(chan amqp.Delivery)}
+	state := &domain.State{GuestId: "guest-1"}
+
+	err := SetupCommunication(ctx, state, consumer, config.RabbitMqConsumerConfig{}, bus)
+	if err != nil {
+		t.Fatalf("setup communication: %v", err)
+	}
+	cancel()
+	<-bus.Done()
+
+	if consumer.DeclareCfg.Name != "q.guest.guest-1" {
+		t.Fatalf("unexpected queue name: %q", consumer.DeclareCfg.Name)
+	}
+	if consumer.DeclareCfg.Durable {
+		t.Fatalf("guest queue should be transient")
+	}
+	if !consumer.DeclareCfg.AutoDelete {
+		t.Fatalf("guest queue should auto-delete")
+	}
+	if !consumer.DeclareCfg.Exclusive {
+		t.Fatalf("guest queue should be exclusive")
+	}
+}
+
 func TestAckDeliveryAndNackDeliveryCallAcknowledger(t *testing.T) {
 	acker := &mqfakes.Acknowledger{}
 	delivery := amqp.Delivery{

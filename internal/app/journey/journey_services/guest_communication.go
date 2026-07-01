@@ -43,6 +43,7 @@ func SetupCommunication(ctx context.Context, state *domain.State, consumer port.
 	queueCfg.Name = state.QueueName
 	queueCfg.Durable = false
 	queueCfg.AutoDelete = true
+	queueCfg.Exclusive = true
 	if err := consumer.DeclareQueue(ctx, queueCfg); err != nil {
 		_ = consumer.CloseChannel()
 		return err
